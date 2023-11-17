@@ -632,6 +632,36 @@ class V2RootResource_REST(TestReactorMixin, www.WwwTestMixin, unittest.TestCase)
         )
 
     @defer.inlineCallbacks
+    def test_api_with_identifier(self):
+        # when 'application/json' is accepted, the result has that type
+        yield self.render_resource(self.rsrc, b'/test/test14', accept=b'application/json')
+        self.assertRestDetails(
+            typeName='tests',
+            item=endpoint.testData[14],
+            contentType=b'application/json; charset=utf-8',
+        )
+
+    @defer.inlineCallbacks
+    def test_api_with_identifier_space(self):
+        # when 'application/json' is accepted, the result has that type
+        yield self.render_resource(self.rsrc, b'/test/test 13', accept=b'application/json')
+        self.assertRestDetails(
+            typeName='tests',
+            item=endpoint.testData[13],
+            contentType=b'application/json; charset=utf-8',
+        )
+
+    @defer.inlineCallbacks
+    def test_api_with_identifier_dash(self):
+        # when 'application/json' is accepted, the result has that type
+        yield self.render_resource(self.rsrc, b'/test/test-15', accept=b'application/json')
+        self.assertRestDetails(
+            typeName='tests',
+            item=endpoint.testData[15],
+            contentType=b'application/json; charset=utf-8',
+        )
+
+    @defer.inlineCallbacks
     def test_api_fails(self):
         yield self.render_resource(self.rsrc, b'/test/fail')
         self.assertRestError(message=r"RuntimeError\('oh noes',?\)", responseCode=500)

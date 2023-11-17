@@ -37,6 +37,7 @@ class BuilderEndpoint(endpoint.EndpointMixin, unittest.TestCase):
         return self.db.insert_test_data([
             fakedb.Builder(id=1, name='buildera'),
             fakedb.Builder(id=2, name='builderb'),
+            fakedb.Builder(id=2, name='a \N{SNOWMAN} c'),
             fakedb.Master(id=13),
             fakedb.BuilderMaster(id=1, builderid=2, masterid=13),
         ])
@@ -62,6 +63,13 @@ class BuilderEndpoint(endpoint.EndpointMixin, unittest.TestCase):
         builder = yield self.callGet(('builders', 'builderc'))
 
         self.assertEqual(builder, None)
+
+    @defer.inlineCallbacks
+    def test_get_by_name_with_unicode(self):
+        builder = yield self.callGet(('builders', 'a \N{SNOWMAN} c'))
+
+        self.assertIsNotNone(builder)
+        self.assertEqual(builder['name'], 'a \N{SNOWMAN} c')
 
     @defer.inlineCallbacks
     def test_get_existing_with_master(self):

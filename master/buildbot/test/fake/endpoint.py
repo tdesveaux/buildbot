@@ -21,10 +21,11 @@ from buildbot.data import base
 from buildbot.data import types
 
 testData = {
-    13: {'testid': 13, 'info': 'ok', 'success': True, 'tags': []},
-    14: {'testid': 14, 'info': 'failed', 'success': False, 'tags': []},
+    13: {'testid': 13, 'testname': 'test 13', 'info': 'ok', 'success': True, 'tags': []},
+    14: {'testid': 14, 'testname': 'test14', 'info': 'failed', 'success': False, 'tags': []},
     15: {
         'testid': 15,
+        'testname': 'test-15',
         'info': 'warned',
         'success': True,
         'tags': [
@@ -32,11 +33,11 @@ testData = {
             'b',
         ],
     },
-    16: {'testid': 16, 'info': 'skipped', 'success': True, 'tags': ['a']},
-    17: {'testid': 17, 'info': 'ignored', 'success': True, 'tags': []},
-    18: {'testid': 18, 'info': 'unexp', 'success': False, 'tags': []},
-    19: {'testid': 19, 'info': 'todo', 'success': True, 'tags': []},
-    20: {'testid': 20, 'info': 'error', 'success': False, 'tags': []},
+    16: {'testid': 16, 'testname': 'test 16', 'info': 'skipped', 'success': True, 'tags': ['a']},
+    17: {'testid': 17, 'testname': 'test 17', 'info': 'ignored', 'success': True, 'tags': []},
+    18: {'testid': 18, 'testname': 'test 18', 'info': 'unexp', 'success': False, 'tags': []},
+    19: {'testid': 19, 'testname': 'test 19', 'info': 'todo', 'success': True, 'tags': []},
+    20: {'testid': 20, 'testname': 'test 20', 'info': 'error', 'success': False, 'tags': []},
 }
 stepData = {
     13: {'stepid': 13, 'testid': 13, 'info': 'ok'},
@@ -79,12 +80,21 @@ class TestEndpoint(base.Endpoint):
     pathPatterns = """
     /tests/n:testid
     /test/n:testid
+    /tests/i:testname
+    /test/i:testname
     """
 
     def get(self, resultSpec, kwargs):
-        if kwargs['testid'] == 0:
-            return None
-        return defer.succeed(testData[kwargs['testid']])
+        testid = kwargs.get('testid')
+        if testid is not None:
+            return defer.succeed(testData.get(testid))
+
+        testname = kwargs.get('testname')
+        if testname is not None:
+            return defer.succeed(
+                next((d for d in testData.values() if d['testname'] == testname), None)
+            )
+        return None
 
     def control(self, action, args, kwargs):
         if action == "fail":
