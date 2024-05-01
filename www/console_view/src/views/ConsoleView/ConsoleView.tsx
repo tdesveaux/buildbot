@@ -445,7 +445,7 @@ export const ConsoleView = observer(() => {
     return (
       <th key={builder.name} className="column">
         <span style={{marginTop: getColHeaderHeight()}} className="bb-console-table-builder">
-          <Link to={`/builders/${builder.builderid}`}>{builder.name}</Link>
+          <Link to={`/builders/${builder.name}`}>{builder.name}</Link>
         </span>
       </th>
     );

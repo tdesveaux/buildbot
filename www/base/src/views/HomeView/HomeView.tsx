@@ -136,7 +136,7 @@ export const HomeView = observer(() => {
                     <div key={b.builder.builderid} className="col-md-4">
                       <Card className="bb-home-builder-card">
                         <Card.Header>
-                          <Link to={`builders/${b.builder.builderid}`}>{b.builder.name}</Link>
+                          <Link to={`builders/${b.builder.name}`}>{b.builder.name}</Link>
                         </Card.Header>
                         <Card.Body>
                           {Object.values(b.builds)

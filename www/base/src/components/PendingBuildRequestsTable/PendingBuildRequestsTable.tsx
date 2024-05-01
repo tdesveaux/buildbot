@@ -80,6 +80,7 @@ export const PendingBuildRequestsTable = observer(
           },
         );
 
+        const builderUrlId = builder?.name ?? buildRequest.builderid;
         return (
           <tr
             key={buildRequest.id}
@@ -98,7 +99,7 @@ export const PendingBuildRequestsTable = observer(
               </Link>
             </td>
             <td>
-              <Link to={`/builders/${buildRequest.builderid}`}>
+              <Link to={`/builders/${builderUrlId}`}>
                 <span>{builder !== null ? builder.name : 'Loading ... '}</span>
               </Link>
             </td>

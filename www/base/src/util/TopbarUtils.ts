@@ -32,7 +32,7 @@ export function buildTopbarItemsForBuilder(
         route: `/projects/${builder.projectid}`,
       });
     }
-    topbarItems.push({caption: builder.name, route: `/builders/${builder.id}`});
+    topbarItems.push({caption: builder.name, route: `/builders/${builder.name}`});
   } else {
     topbarItems.push({caption: '...', route: null});
   }

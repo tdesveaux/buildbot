@@ -74,11 +74,12 @@ export const BuildRequestSummary = observer(({buildrequestid}: BuildRequestSumma
 
     const reason = buildset === null ? '(loading ...)' : buildset.reason;
     const builderName = builder === null ? 'loading ... ' : builder.name;
+    const builderUrlId = builder !== null ? builder.name : buildRequest.builderid;
 
     return (
       <>
         <div className="flex-grow-1">
-          <Link to={`/builders/${buildRequest.builderid}`}>{builderName}</Link>/ buildrequests /
+          <Link to={`/builders/${builderUrlId}`}>{builderName}</Link>/ buildrequests /
           <Link to={`/buildrequests/${buildrequestid}`}>{buildrequestid}</Link>| {reason}
         </div>
         <div className="flex-grow-1 text-right">
