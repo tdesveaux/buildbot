@@ -17,9 +17,9 @@ exports[`buildsticker component > failed 1`] = `
           FAILURE
         </div>
         <a
-          href="/builders/2/builds/1"
+          href="/builders/test-builder/builds/1"
         >
-          /1
+          test-builder/1
         </a>
       </div>
       <div
@@ -56,9 +56,9 @@ exports[`buildsticker component > pending 1`] = `
           ...
         </div>
         <a
-          href="/builders/2/builds/1"
+          href="/builders/test-builder/builds/1"
         >
-          /1
+          test-builder/1
         </a>
       </div>
       <div
@@ -95,9 +95,9 @@ exports[`buildsticker component > simple 1`] = `
           ...
         </div>
         <a
-          href="/builders/2/builds/1"
+          href="/builders/test-builder/builds/1"
         >
-          /1
+          test-builder/1
         </a>
       </div>
       <div
@@ -132,9 +132,9 @@ exports[`buildsticker component > success 1`] = `
           SUCCESS
         </div>
         <a
-          href="/builders/2/builds/1"
+          href="/builders/test-builder/builds/1"
         >
-          /1
+          test-builder/1
         </a>
       </div>
       <div

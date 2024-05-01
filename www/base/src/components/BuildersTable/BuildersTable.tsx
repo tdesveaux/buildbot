@@ -111,7 +111,7 @@ export const BuildersTable = observer(
           .sort((a, b) => b.number - a.number)
           .slice(0, perBuilderBuildFetchLimit);
 
-      buildElements = builds.map(build => (<BuildLinkWithSummaryTooltip key={build.id} build={build}/>));
+      buildElements = builds.map(build => (<BuildLinkWithSummaryTooltip key={build.id} build={build} builder={builder}/>));
     }
 
     let workerElements: JSX.Element[] = [];
