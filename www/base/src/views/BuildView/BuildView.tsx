@@ -278,7 +278,7 @@ const BuildView = observer(() => {
   };
 
   useTopbarItems(buildTopbarItemsForBuilder(builder, project, [
-    {caption: buildnumber.toString(), route: `/builders/${builderid}/builds/${buildnumber}`}
+    {caption: buildnumber.toString(), route: `/builders/${builderUrlId}/builds/${buildnumber}`}
   ]));
 
   const actions = buildTopbarActions(build, isRebuilding, rebuiltBuildRequest, isStopping, doRebuild, doStop, navigate);
@@ -290,7 +290,7 @@ const BuildView = observer(() => {
     const renderPrevLink = () => {
       if (buildnumber > 1 && prevBuild !== null && build !== null) {
         return (
-          <Link to={`/builders/${builderid}/builds/${prevBuild.number}`}
+          <Link to={`/builders/${builderUrlId}/builds/${prevBuild.number}`}
                 className="bb-build-view-nav-button">
             <BadgeRound className={results2class(prevBuild, 'pulse')}>←</BadgeRound>
             <span className="nomobile">&nbsp;Previous</span>
@@ -318,7 +318,7 @@ const BuildView = observer(() => {
     const renderNextLink = () => {
       if (!lastBuild && nextBuild !== null) {
         return (
-          <Link to={`/builders/${builderid}/builds/${nextBuild.number}`}
+          <Link to={`/builders/${builderUrlId}/builds/${nextBuild.number}`}
                 className="bb-build-view-nav-button">
             <span className="nomobile">Next&nbsp;</span>
             <BadgeRound className={results2class(nextBuild, 'pulse')}>→</BadgeRound>
