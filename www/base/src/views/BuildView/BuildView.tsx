@@ -208,6 +208,8 @@ const BuildView = observer(() => {
   const buildersQuery = useDataApiQuery(() => Builder.getAll(accessor, {id: builderid}));
   const builder = buildersQuery.getNthOrNull(0);
 
+  const builderUrlId = builder?.name ?? builderid;
+
   const now = useCurrentTime();
 
   // get the build plus the previous and next
@@ -296,9 +298,9 @@ const BuildView = observer(() => {
   const shouldNavigateToBuilder = buildersQuery.isResolved() && buildsQuery.isResolved() && build === null;
   useEffect(() => {
     if (shouldNavigateToBuilder) {
-      navigate(`/builders/${builderid}`);
+      navigate(`/builders/${builderUrlId}`);
     }
-  }, [builderid, navigate, shouldNavigateToBuilder]);
+  }, [builderUrlId, navigate, shouldNavigateToBuilder]);
 
   /*
     $window.document.title = $state.current.data.pageTitle({builder: builder['name'], build: buildnumber});
