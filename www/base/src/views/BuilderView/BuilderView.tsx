@@ -249,7 +249,7 @@ export const BuilderView = observer(() => {
           <Tab eventKey={1} title="Builds">
             <TableHeading>Builds requests:</TableHeading>
             <BuildRequestsTable buildrequests={buildrequests}/>
-            <BuildsTable builds={builds} builders={null} fetchLimit={buildsFetchLimit}
+            <BuildsTable builds={builds} builders={buildersQuery} fetchLimit={buildsFetchLimit}
                          onLoadMore={onLoadMoreBuilds}/>
           </Tab>
           <Tab eventKey={2} title="Workers">
