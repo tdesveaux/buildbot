@@ -48,7 +48,8 @@ describe('buildsticker component', function() {
     } as any;
 
     const builder: Builder = {
-      builderid: 2
+      builderid: 2,
+      name: "test-builder"
     } as any;
 
     assertBuildStickerRenderSnapshot(build, builder);
@@ -66,7 +67,8 @@ describe('buildsticker component', function() {
     } as any;
 
     const builder: Builder = {
-      builderid: 2
+      builderid: 2,
+      name: "test-builder"
     } as any;
 
     assertBuildStickerRenderSnapshot(build, builder);
@@ -85,7 +87,8 @@ describe('buildsticker component', function() {
     } as any;
 
     const builder: Builder = {
-      builderid: 2
+      builderid: 2,
+      name: "test-builder"
     } as any;
 
     assertBuildStickerRenderSnapshot(build, builder);
@@ -104,7 +107,8 @@ describe('buildsticker component', function() {
     } as any;
 
     const builder: Builder = {
-      builderid: 2
+      builderid: 2,
+      name: "test-builder"
     } as any;
 
     assertBuildStickerRenderSnapshot(build, builder);

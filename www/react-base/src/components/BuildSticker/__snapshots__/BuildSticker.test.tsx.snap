@@ -16,9 +16,10 @@ exports[`buildsticker component failed 1`] = `
         FAILURE
       </div>
       <a
-        href="/builders/2/builds/1"
+        href="/builders/test-builder/builds/1"
         onClick={[Function]}
       >
+        test-builder
         /
         1
       </a>
@@ -55,9 +56,10 @@ exports[`buildsticker component pending 1`] = `
         ...
       </div>
       <a
-        href="/builders/2/builds/1"
+        href="/builders/test-builder/builds/1"
         onClick={[Function]}
       >
+        test-builder
         /
         1
       </a>
@@ -94,9 +96,10 @@ exports[`buildsticker component simple 1`] = `
         ...
       </div>
       <a
-        href="/builders/2/builds/1"
+        href="/builders/test-builder/builds/1"
         onClick={[Function]}
       >
+        test-builder
         /
         1
       </a>
@@ -131,9 +134,10 @@ exports[`buildsticker component success 1`] = `
         SUCCESS
       </div>
       <a
-        href="/builders/2/builds/1"
+        href="/builders/test-builder/builds/1"
         onClick={[Function]}
       >
+        test-builder
         /
         1
       </a>
