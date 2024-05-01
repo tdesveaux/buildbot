@@ -42,7 +42,7 @@ const LogView = observer(() => {
 
   const buildersQuery = useDataApiQuery(() => Builder.getAll(accessor, {id: builderid}));
   const builder = buildersQuery.getNthOrNull(0);
-  const builderUrlId = builder?.builderid.toString() ?? builderid;
+  const builderUrlId = builder?.name ?? builderid;
 
   const buildsQuery = useDataApiQuery(() =>
     buildersQuery.getRelated((builder: Builder) =>

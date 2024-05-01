@@ -362,7 +362,7 @@ export const BuildView = observer(() => {
     buildTopbarItemsForBuilder(builder, project, [
       {
         caption: buildnumber.toString(),
-        route: `/builders/${builderid}/builds/${buildnumber}`,
+        route: `/builders/${builderUrlId}/builds/${buildnumber}`,
       },
     ]),
   );
@@ -385,7 +385,7 @@ export const BuildView = observer(() => {
       if (buildnumber > 1 && prevBuild !== null && build !== null) {
         return (
           <Link
-            to={`/builders/${builderid}/builds/${prevBuild.number}`}
+            to={`/builders/${builderUrlId}/builds/${prevBuild.number}`}
             className="bb-build-view-nav-button"
           >
             <BadgeRound className={results2class(prevBuild, 'pulse')}>←</BadgeRound>
@@ -416,7 +416,7 @@ export const BuildView = observer(() => {
       if (!lastBuild && nextBuild !== null) {
         return (
           <Link
-            to={`/builders/${builderid}/builds/${nextBuild.number}`}
+            to={`/builders/${builderUrlId}/builds/${nextBuild.number}`}
             className="bb-build-view-nav-button"
           >
             <span className="nomobile">Next&nbsp;</span>

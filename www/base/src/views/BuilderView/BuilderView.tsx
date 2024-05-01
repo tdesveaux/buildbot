@@ -296,7 +296,7 @@ export const BuilderView = observer(() => {
             <BuildRequestsTable buildrequests={buildrequests} />
             <BuildsTable
               builds={builds}
-              builders={null}
+              builders={buildersQuery}
               fetchLimit={buildsFetchLimit}
               onLoadMore={onLoadMoreBuilds}
             />

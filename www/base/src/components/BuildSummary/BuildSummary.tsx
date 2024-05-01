@@ -297,7 +297,7 @@ export const BuildSummary = observer(
       const relationship = parentRelationship === null ? '' : parentRelationship;
       return (
         <span>
-          <Link to={`/builders/${parentBuild.builderid}/builds/${parentBuild.number}`}>
+          <Link to={`/builders/${parentBuilder.name}/builds/${parentBuild.number}`}>
             <BadgeStatus className={results2class(parentBuild, null)}>
               <>
                 {relationship}:{parentBuilder.name}/{parentBuild.number}
@@ -344,7 +344,7 @@ export const BuildSummary = observer(
             {detailLevelToString(detailLevel)}
           </div>
           {builder !== null ? (
-            <Link to={`/builders/${build.builderid}/builds/${build.number}`}>
+            <Link to={`/builders/${builder.name}/builds/${build.number}`}>
               &nbsp;
               {builder.name}/{build.number}
             </Link>

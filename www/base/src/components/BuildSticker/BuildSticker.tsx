@@ -35,7 +35,7 @@ export const BuildSticker = observer(({build, builder}: BuildStickerProps) => {
       <Card.Body>
         <div className="bb-buildsticker-left">
           <BadgeStatus className={results2class(build, null)}>{results2text(build)}</BadgeStatus>
-          <Link to={`builders/${builder.builderid}/builds/${build.number}`}>
+          <Link to={`builders/${builder.name}/builds/${build.number}`}>
             {builder.name}/{build.number}
           </Link>
         </div>

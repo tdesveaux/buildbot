@@ -107,7 +107,7 @@ export const BuildersTable = observer(
         builds = builds.sort((a, b) => b.number - a.number).slice(0, perBuilderBuildFetchLimit);
 
         buildElements = builds.map((build) => (
-          <BuildLinkWithSummaryTooltip key={build.id} build={build} />
+          <BuildLinkWithSummaryTooltip key={build.id} build={build} builder={builder} />
         ));
       }
 

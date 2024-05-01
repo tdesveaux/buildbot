@@ -135,7 +135,8 @@ export const BuildRequestView = observer(() => {
   useEffect(() => {
     if (buildsQuery.array.length > 0 && redirectToBuild) {
       const build = buildsQuery.getNthOrNull(0);
-      navigate(`/builders/${build?.builderid}/builds/${build?.number}`);
+      const builderUrlId = builder?.name ?? build?.builderid;
+      navigate(`/builders/${builderUrlId}/builds/${build?.number}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildsQuery.array.length > 0, buildsQuery, navigate, redirectToBuild]);
