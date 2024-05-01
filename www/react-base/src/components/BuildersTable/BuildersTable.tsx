@@ -125,7 +125,7 @@ export const BuildersTable = observer(
     return (
         <tr key={builder.name}>
           <td style={{width: "200px"}}>
-            <Link to={`/builders/${builder.builderid}`}>{builder.name}</Link></td>
+            <Link to={`/builders/${builder.name}`}>{builder.name}</Link></td>
           <td>
             {buildElements}
           </td>

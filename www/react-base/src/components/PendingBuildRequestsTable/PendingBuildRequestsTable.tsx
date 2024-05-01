@@ -50,6 +50,8 @@ export const PendingBuildRequestsTable = observer(({buildRequestsQuery}: Pending
       const builder = buildersQuery.getNthOfParentOrNull(buildRequest.id, 0);
       const properties = propertiesQuery.getParentCollectionOrEmpty(buildRequest.id);
 
+      const builderUrlId = builder?.name ?? buildRequest.builderid;
+
       const propertiesElements = Array.from(properties.properties.entries()).map(([name, valueSource]) => {
         return (
           <li key={name}>{name} = {JSON.stringify(valueSource[0])}</li>
@@ -70,7 +72,7 @@ export const PendingBuildRequestsTable = observer(({buildRequestsQuery}: Pending
             </Link>
           </td>
           <td>
-            <Link to={`/builders/${buildRequest.builderid}`}>
+            <Link to={`/builders/${builderUrlId}`}>
               <span>{builder !== null ? builder.name : "Loading ... "}</span>
             </Link>
           </td>
