@@ -89,7 +89,7 @@ export const BuildsTable = observer(({builds, builders, fetchLimit, onLoadMore}:
       <tr key={build.id}>
         {builderNameElement}
         <td>
-          <BuildLinkWithSummaryTooltip build={build}/>
+          <BuildLinkWithSummaryTooltip build={build} builder={builder}/>
         </td>
         <td>
           {getBuildTimeElement(build, buildTimeBase, now)}
