@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
+import tempfile
 from unittest import mock
 
 from twisted.internet import defer
@@ -30,6 +32,7 @@ from buildbot.test.runprocess import MasterRunProcessMixin
 from buildbot.test.util import changesource
 from buildbot.test.util import config
 from buildbot.test.util import logging
+from buildbot.test.util.git_repository import RealGitRepositoryMixin
 from buildbot.util import bytes2unicode
 from buildbot.util import unicode2bytes
 from buildbot.util.twisted import async_to_deferred
@@ -2447,4 +2450,120 @@ class TestGitPollerUtils(unittest.TestCase):
         self.assertNotEqual(
             gitpoller.GitPoller._tracker_ref("https://example.org/repo.git", "HEAD"),
             gitpoller.GitPoller._tracker_ref("https://example.org/repo.git", "refs/raw/HEAD"),
+        )
+
+
+class TestGitPollerBareRepository(
+    changesource.ChangeSourceMixin,
+    logging.LoggingMixin,
+    RealGitRepositoryMixin,
+    unittest.TestCase,
+):
+    REPOURL = str(RealGitRepositoryMixin.REMOTE_PATH)
+
+    @defer.inlineCallbacks
+    def setUp(self):
+        yield self.setUpChangeSource(want_real_reactor=True)
+        yield self.master.startService()
+
+        self.poller_workdir = tempfile.mkdtemp(
+            prefix="buildbot.test.unit.changes.test_gitpoller.TestGitPollerBareRepository."
+        )
+
+        self.poller = yield self.attachChangeSource(
+            gitpoller.GitPoller(self.REPOURL, branches=['main'], workdir=self.poller_workdir)
+        )
+
+        self.assert_repository_expecteds_state(testcase=self)
+
+    @defer.inlineCallbacks
+    def tearDown(self):
+        yield self.master.stopService()
+        yield self.tearDownChangeSource()
+
+        shutil.rmtree(self.poller_workdir)
+
+    @async_to_deferred
+    async def set_last_rev(self, state: dict[str, str]) -> None:
+        await self.poller.setState('lastRev', state)
+        self.poller.lastRev = state
+
+    @async_to_deferred
+    async def assert_last_rev(self, state: dict[str, str]) -> None:
+        last_rev = await self.poller.getState('lastRev', None)
+        self.assertEqual(last_rev, state)
+        self.assertEqual(self.poller.lastRev, state)
+
+    @async_to_deferred
+    async def test_poll_initial(self):
+        self.poller.doPoll.running = True
+        await self.poller.poll()
+
+        await self.assert_last_rev({'main': 'c413927b8e2c915bed340ce5325ab32f6c9ab9d5'})
+        self.assertEqual(
+            self.master.data.updates.changesAdded,
+            [],
+        )
+
+    @async_to_deferred
+    async def test_poll_from_last(self):
+        self.maxDiff = None
+        await self.set_last_rev({'main': 'c228e0bf59c31845635f0c2bc4cdb709ee8badfa'})
+        self.poller.doPoll.running = True
+        await self.poller.poll()
+
+        await self.assert_last_rev({'main': 'c413927b8e2c915bed340ce5325ab32f6c9ab9d5'})
+
+        self.assertEqual(
+            self.master.data.updates.changesAdded,
+            [
+                {
+                    'author': 'test user <user@example.com>',
+                    'branch': 'main',
+                    'category': None,
+                    'codebase': None,
+                    'comments': 'Fix 1',
+                    'committer': 'test user <user@example.com>',
+                    'files': ['README.md'],
+                    'project': '',
+                    'properties': {},
+                    'repository': self.REPOURL,
+                    'revision': 'd949729950f7476ee89173865cf4fa62449d15d3',
+                    'revlink': '',
+                    'src': 'git',
+                    'when_timestamp': 1717849729,
+                },
+                {
+                    'author': 'test user <user@example.com>',
+                    'branch': 'main',
+                    'category': None,
+                    'codebase': None,
+                    'comments': 'Feature 1',
+                    'committer': 'test user <user@example.com>',
+                    'files': ['README.md'],
+                    'project': '',
+                    'properties': {},
+                    'repository': self.REPOURL,
+                    'revision': 'b692c76ebb10c797745330c92de68a11b2d5d413',
+                    'revlink': '',
+                    'src': 'git',
+                    'when_timestamp': 1717849778,
+                },
+                {
+                    'author': 'test user <user@example.com>',
+                    'branch': 'main',
+                    'category': None,
+                    'codebase': None,
+                    'comments': "Merge branch 'feature/1'",
+                    'committer': 'test user <user@example.com>',
+                    'files': [],
+                    'project': '',
+                    'properties': {},
+                    'repository': self.REPOURL,
+                    'revision': 'c413927b8e2c915bed340ce5325ab32f6c9ab9d5',
+                    'revlink': '',
+                    'src': 'git',
+                    'when_timestamp': 1717849805,
+                },
+            ],
         )
