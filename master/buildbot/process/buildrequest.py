@@ -345,17 +345,17 @@ class BuildRequest:
 
         return True
 
-    def mergeSourceStampsWith(self, others):
+    def mergeSourceStampsWith(self, others: list[BuildRequest]) -> list[TempSourceStamp]:
         """Returns one merged sourcestamp for every codebase"""
         # get all codebases from all requests
         all_codebases = set(self.sources)
         for other in others:
             all_codebases |= set(other.sources)
 
-        all_merged_sources = {}
+        all_merged_sources: dict[str, TempSourceStamp] = {}
         # walk along the codebases
         for codebase in all_codebases:
-            all_sources = []
+            all_sources: list[TempSourceStamp] = []
             if codebase in self.sources:
                 all_sources.append(self.sources[codebase])
             for other in others:
