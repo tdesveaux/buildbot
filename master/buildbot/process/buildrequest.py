@@ -115,8 +115,10 @@ class TempSourceStamp:
 
     changes: list[TempChange]
 
-    def __init__(self, ssdict):
+    def __init__(self, ssdict) -> None:
         self._ssdict = ssdict
+
+        self.changes: list[TempChange] = []
 
     def __getattr__(self, attr):
         if attr in self.ATTRS or attr == 'ssid':
