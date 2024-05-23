@@ -224,8 +224,9 @@ class Build(properties.PropertiesMixin):
             if c.who not in blamelist:
                 blamelist.append(c.who)
         for source in self.sources:
-            if source.patch:  # Add patch author to blamelist
-                blamelist.append(source.patch_info[0])
+            author, _ = source.patch_info
+            if author is not None:  # Add patch author to blamelist
+                blamelist.append(author)
         blamelist.sort()
         return blamelist
 
