@@ -202,7 +202,7 @@ class Source(buildstep.BuildStep, CompositeStepMixin):
             )
             super().setProperty(name, value, source)
 
-    def computeSourceRevision(self, changes: list[TempChange] | None) -> Any:
+    def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
         """Each subclass must implement this method to do something more
         precise than -rHEAD every time. For version control systems that use
         repository-wide change numbers (SVN, P4), this can simply take the

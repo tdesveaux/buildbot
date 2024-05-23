@@ -38,6 +38,7 @@ from buildbot.steps.source.base import Source
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    from buildbot.process.buildrequest import TempChange
     from buildbot.util.twisted import InlineCallbacksType
 
 
@@ -396,11 +397,11 @@ class SVN(Source):
         yield self.runCommand(cmd)
         return cmd.rc == 0
 
-    def computeSourceRevision(self, changes: Any) -> int | None:
+    def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
         if not changes or None in [c.revision for c in changes]:
             return None
         lastChange = max(int(c.revision) for c in changes)
-        return lastChange
+        return str(lastChange)
 
     @staticmethod
     def svnUriCanonicalize(uri: str | None) -> str | None:

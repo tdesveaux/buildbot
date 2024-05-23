@@ -33,6 +33,7 @@ from buildbot.process.properties import Interpolate
 from buildbot.steps.source import Source
 
 if TYPE_CHECKING:
+    from buildbot.process.buildrequest import TempChange
     from buildbot.util.twisted import InlineCallbacksType
 
 # Notes:
@@ -467,8 +468,8 @@ class P4(Source):
         yield self.runCommand(cmd)
         return cmd.rc == 0
 
-    def computeSourceRevision(self, changes: Any) -> int | None:
+    def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
         if not changes or None in [c.revision for c in changes]:
             return None
         lastChange = max(int(c.revision) for c in changes)
-        return lastChange
+        return str(lastChange)

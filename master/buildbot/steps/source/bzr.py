@@ -224,11 +224,11 @@ class Bzr(Source):
         assert self.build is not None
         return self.pathExists(self.build.path_module.join(self.workdir, '.bzr'))
 
-    def computeSourceRevision(self, changes: list[TempChange] | None) -> int | None:
+    def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
         if not changes:
             return None
         lastChange = max(int(c.revision) for c in changes)
-        return lastChange
+        return str(lastChange)
 
     def _dovccmd(
         self, command: list[str], abandonOnFailure: bool = True, collectStdout: bool = False
