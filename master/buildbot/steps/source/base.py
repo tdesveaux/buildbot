@@ -26,9 +26,11 @@ from buildbot.process import remotecommand
 from buildbot.process.results import FAILURE
 from buildbot.steps.worker import CompositeStepMixin
 from buildbot.util import bytes2unicode
+from buildbot.warnings import warn_deprecated
 
 if TYPE_CHECKING:
     from buildbot.process.buildrequest import TempChange
+    from buildbot.process.buildrequest import TempSourceStamp
 
 
 class Source(buildstep.BuildStep, CompositeStepMixin):
@@ -196,6 +198,41 @@ class Source(buildstep.BuildStep, CompositeStepMixin):
             )
             super().setProperty(name, value, source)
 
+    def compute_source_revision(
+        self, sourcestamp: TempSourceStamp
+    ) -> tuple[str | None, str | None]:
+        """
+        Should return a tuple of (branch, revision)
+
+        Each subclass must implement this method to do something more
+        precise than -rHEAD every time. For version control systems that use
+        repository-wide change numbers (SVN, P4), this can simply take the
+        maximum such number from all the changes involved in this build. For
+        systems that do not (CVS), it needs to create a timestamp based upon
+        the latest Change, the Build's treeStableTimer, and an optional
+        self.checkoutDelay value.
+        """
+        # if revision is None, use the latest sources (-rHEAD)
+        revision = self.computeSourceRevision(sourcestamp.changes)
+        if revision:
+            warn_deprecated(
+                '4.0.0',
+                (
+                    "Source.computeSourceRevision(changes: list[TempChange]) "
+                    "is deprecated and will be removed. "
+                    "Use Source.compute_source_revision(sourcestamp: TempSourceStamp) instead."
+                ),
+            )
+        else:
+            revision = sourcestamp.revision
+
+        branch = sourcestamp.branch
+        # if branch is None, then use the Step's "default" branch
+        if not branch:
+            branch = self.branch
+
+        return branch, revision
+
     def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
         """Each subclass must implement this method to do something more
         precise than -rHEAD every time. For version control systems that use
@@ -280,16 +317,11 @@ class Source(buildstep.BuildStep, CompositeStepMixin):
             self.sourcestamp = s
 
             if self.sourcestamp:
-                # if branch is None, then use the Step's "default" branch
-                branch = s.branch or self.branch
-                # if revision is None, use the latest sources (-rHEAD)
-                revision = s.revision
-                if not revision:
-                    revision = self.computeSourceRevision(s.changes)
-                    # the revision property is currently None, so set it to something
-                    # more interesting
-                    if revision is not None:
-                        self.updateSourceProperty('revision', str(revision))
+                branch, revision = self.compute_source_revision(self.sourcestamp)
+                # the revision property is currently None, so set it to something
+                # more interesting
+                if revision is not None:
+                    self.updateSourceProperty('revision', str(revision))
 
                 # if patch is None, then do not patch the tree after checkout
 
