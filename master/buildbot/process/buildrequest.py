@@ -131,10 +131,9 @@ class TempSourceStamp:
         ('patch_comment', 'comment'),
     )
 
-    changes: list[TempChange]
-
     def __init__(self, ssdict: Mapping[str, Any]) -> None:
         self._ssdict = ssdict
+        self.changes: list[TempChange] = []
 
     def __getattr__(self, attr: str) -> Any:
         if attr in self.ATTRS or attr == 'ssid':
