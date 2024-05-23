@@ -34,7 +34,7 @@ from buildbot.util.git_credential import add_user_password_to_credentials
 
 if TYPE_CHECKING:
     from buildbot.interfaces import IRenderable
-    from buildbot.process.buildrequest import TempChange
+    from buildbot.process.buildrequest import TempSourceStamp
 
 
 GIT_HASH_LENGTH = 40
@@ -528,11 +528,17 @@ class Git(Source, GitStepMixin):
             raise RuntimeError("Failed to delete directory")
         return rc
 
-    def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
-        for change in reversed(changes):
+    def compute_source_revision(
+        self, sourcestamp: TempSourceStamp
+    ) -> tuple[str | None, str | None]:
+        for change in reversed(sourcestamp.changes):
             if change.repository == self.repourl and change.revision:
-                return change.revision
-        return None
+                return change.branch, change.revision
+
+        if sourcestamp.repository == self.repourl:
+            return sourcestamp.branch, sourcestamp.revision
+
+        return None, None
 
     @defer.inlineCallbacks
     def _syncSubmodule(self, _=None):
