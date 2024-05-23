@@ -32,6 +32,7 @@ from buildbot.process.results import SKIPPED
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from collections.abc import Mapping
+    from typing import Any
 
     from twisted.internet.defer import Deferred
 
@@ -136,18 +137,23 @@ class TempSourceStamp:
         self._ssdict = ssdict
 
     def __getattr__(self, attr: str) -> Any:
-        patch = self._ssdict.get('patch')
-        if attr == 'patch':
-            if patch:
-                return (patch['level'], patch['body'], patch['subdir'])
-            return None
-        elif attr == 'patch_info':
-            if patch:
-                return (patch['author'], patch['comment'])
-            return (None, None)
-        elif attr in self.ATTRS or attr == 'ssid':
+        if attr in self.ATTRS or attr == 'ssid':
             return self._ssdict[attr]
         raise AttributeError(attr)
+
+    @property
+    def patch(self) -> tuple[int, bytes, str | None] | None:
+        patch = self._ssdict.get('patch')
+        if patch is not None:
+            return (patch['level'], patch['body'], patch['subdir'])
+        return None
+
+    @property
+    def patch_info(self) -> tuple[str | None, str | None]:
+        patch = self._ssdict.get('patch')
+        if patch is not None:
+            return (patch['author'], patch['comment'])
+        return (None, None)
 
     def asSSDict(self) -> Mapping[str, Any]:
         return self._ssdict
