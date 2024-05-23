@@ -534,10 +534,11 @@ class Git(Source, GitStepMixin):
             raise RuntimeError("Failed to delete directory")
         return rc
 
-    def computeSourceRevision(self, changes: list[TempChange] | None) -> Any:
-        if not changes:
-            return None
-        return changes[-1].revision
+    def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
+        for change in reversed(changes):
+            if change.repository == self.repourl and change.revision:
+                return change.revision
+        return None
 
     @defer.inlineCallbacks
     def _syncSubmodule(self, _: Any = None) -> InlineCallbacksType[int]:
