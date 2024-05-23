@@ -45,6 +45,8 @@ from buildbot.util.eventual import eventually
 
 if TYPE_CHECKING:
     from buildbot.process.builder import Builder
+    from buildbot.process.buildrequest import BuildRequest
+    from buildbot.process.buildrequest import TempSourceStamp
     from buildbot.process.workerforbuilder import AbstractWorkerForBuilder
 
 
@@ -83,7 +85,7 @@ class Build(properties.PropertiesMixin):
 
     _sentinel = Sentinel()  # used as a sentinel to indicate unspecified initial_value
 
-    def __init__(self, requests):
+    def __init__(self, requests: list[BuildRequest]):
         self.requests = requests
         self.locks = []  # list of lock accesses
         self._locks_to_acquire = []  # list of (real_lock, access) tuples
@@ -147,7 +149,7 @@ class Build(properties.PropertiesMixin):
         # builder directly)
         self.workerEnvironment = env
 
-    def getSourceStamp(self, codebase=''):
+    def getSourceStamp(self, codebase: str = '') -> TempSourceStamp | None:
         for source in self.sources:
             if source.codebase == codebase:
                 return source
