@@ -12,7 +12,10 @@
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Copyright Buildbot Team Members
+
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from twisted.internet import defer
 from twisted.python import log
@@ -23,6 +26,9 @@ from buildbot.process import remotecommand
 from buildbot.process.results import FAILURE
 from buildbot.steps.worker import CompositeStepMixin
 from buildbot.util import bytes2unicode
+
+if TYPE_CHECKING:
+    from buildbot.process.buildrequest import TempChange
 
 
 class Source(buildstep.BuildStep, CompositeStepMixin):
@@ -190,7 +196,7 @@ class Source(buildstep.BuildStep, CompositeStepMixin):
             )
             super().setProperty(name, value, source)
 
-    def computeSourceRevision(self, changes):
+    def computeSourceRevision(self, changes: list[TempChange]) -> str | None:
         """Each subclass must implement this method to do something more
         precise than -rHEAD every time. For version control systems that use
         repository-wide change numbers (SVN, P4), this can simply take the
