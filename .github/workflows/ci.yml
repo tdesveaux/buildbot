@@ -2,21 +2,32 @@ name: CI
 on:
   push:
     branches:
-    - master
+    - fake_master
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  win:
-    name: Win / python ${{ matrix.python-version }}
-    runs-on: windows-2019
+  ci:
+    name: ${{ matrix.host-version }} / python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.host-version }}
 
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        host-version:
+          - windows-2019
+          - windows-2022
+          - ubuntu-latest
+          - macos-13  # latest is m1
+          - macos-latest
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
 
     env:
       # Needed to ignore specific warns, otherwise, it'll warn a generic message
@@ -44,9 +55,13 @@ jobs:
           python -m pip install -r requirements-pip.txt
           python -m pip install -r requirements-ci.txt
           python -m pip list
+
+      - name: "Check win32api"
+        if: ${{ contains(matrix.host-version, 'windows') }}
+        run: |
           # Check that pywin32 is properly installed
           python -c "import win32api"
 
       - name: "Run tests for ${{ matrix.python-version }}"
-        run: "python -m twisted.trial --reporter=text --rterrors buildbot.test buildbot_worker.test"
+        run: "python -m twisted.trial -j4 --reporter=text --rterrors buildbot.test buildbot_worker.test"
         timeout-minutes: 30

@@ -2,7 +2,7 @@ name: CI (DB)
 on:
   push:
     branches:
-    - master
+    - fake_master
     - release
 
 permissions:
