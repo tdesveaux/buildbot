@@ -2,7 +2,7 @@ name: CI (DB)
 on:
   push:
     branches:
-    - master
+    - fake_master
     - release
 
 permissions:
@@ -87,4 +87,4 @@ jobs:
 
       - run: pip install -U pip wheel
       - run: pip install -r requirements-ci.txt -r requirements-cidb.txt
-      - run: $(which trial) --reporter=text --rterrors buildbot.test buildbot_worker.test
+      - run: $(which trial) --reporter=subunit --rterrors buildbot.test buildbot_worker.test
