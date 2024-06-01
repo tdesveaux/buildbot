@@ -23,10 +23,18 @@ jobs:
       SQLALCHEMY_WARN_20: 1
 
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-python@v2"
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
         with:
           python-version: "${{ matrix.python-version }}"
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements-ci.txt
+            requirements-cidb.txt
+            master/setup.py
+            worker/setup.py
+            pkg/setup.py
+
       - name: "Install dependencies"
         run: |
           python -c "import sys; print(sys.prefix)"
@@ -38,6 +46,45 @@ jobs:
           python -m pip list
           # Check that pywin32 is properly installed
           python -c "import win32api"
+
+      - name: "Run tests for ${{ matrix.python-version }}"
+        run: "python -m twisted.trial --reporter=text --rterrors buildbot.test buildbot_worker.test"
+        timeout-minutes: 30
+
+  linux:
+    name: Linux / python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    env:
+      # Needed to ignore specific warns, otherwise, it'll warn a generic message
+      SQLALCHEMY_WARN_20: 1
+
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "${{ matrix.python-version }}"
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements-ci.txt
+            requirements-cidb.txt
+            master/setup.py
+            worker/setup.py
+            pkg/setup.py
+      - name: "Install dependencies"
+        run: |
+          python -c "import sys; print(sys.prefix)"
+          python -c "import sys; print(sys.exec_prefix)"
+          python -c "import sys; print(sys.executable)"
+          python -V -V
+          python -m pip install -U pip setuptools wheel
+          python -m pip install -r requirements-ci.txt
+          python -m pip list
 
       - name: "Run tests for ${{ matrix.python-version }}"
         run: "python -m twisted.trial --reporter=text --rterrors buildbot.test buildbot_worker.test"
