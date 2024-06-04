@@ -92,4 +92,4 @@ jobs:
 
       - run: pip install -U pip wheel
       - run: pip install -r requirements-ci.txt -r requirements-cidb.txt
-      - run: $(which trial) --reporter=subunit --rterrors buildbot.test buildbot_worker.test
+      - run: $(which trial) --reporter=subunit --rterrors -x buildbot.test buildbot_worker.test
