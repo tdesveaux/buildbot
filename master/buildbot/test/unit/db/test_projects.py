@@ -20,6 +20,7 @@ from buildbot.db import projects
 from buildbot.test import fakedb
 from buildbot.test.util import connector_component
 from buildbot.test.util import interfaces
+from buildbot.util.twisted import async_to_deferred
 
 
 def project_key(builder):
@@ -98,12 +99,12 @@ class Tests(interfaces.InterfaceTests):
         id = yield self.db.projects.find_project_id('fake_project', auto_create=False)
         self.assertIsNone(id)
 
-    @defer.inlineCallbacks
-    def test_find_project_id_exists(self):
-        yield self.insert_test_data([
+    @async_to_deferred
+    async def test_find_project_id_exists(self):
+        await self.insert_test_data([
             fakedb.Project(id=7, name='fake_project'),
         ])
-        id = yield self.db.projects.find_project_id('fake_project')
+        id = await self.db.projects.find_project_id('fake_project')
         self.assertEqual(id, 7)
 
     @defer.inlineCallbacks

@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 import sqlalchemy as sa
 
 from buildbot.util import unicode2bytes
+from buildbot.util.twisted import async_to_deferred
 
 if TYPE_CHECKING:
     from buildbot.db.connector import DBConnector
@@ -77,11 +78,14 @@ class DBConnectorComponent:
             )
         return value
 
-    # returns a Deferred that returns a value
-    def findSomethingId(self, tbl, whereclause, insert_values, _race_hook=None, autoCreate=True):
-        d = self.findOrCreateSomethingId(tbl, whereclause, insert_values, _race_hook, autoCreate)
-        d.addCallback(lambda pair: pair[0])
-        return d
+    @async_to_deferred
+    async def findSomethingId(
+        self, tbl, whereclause, insert_values, _race_hook=None, autoCreate=True
+    ):
+        found_id, _ = await self.findOrCreateSomethingId(
+            tbl, whereclause, insert_values, _race_hook, autoCreate
+        )
+        return found_id
 
     def findOrCreateSomethingId(
         self, tbl, whereclause, insert_values, _race_hook=None, autoCreate=True
