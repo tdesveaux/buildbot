@@ -18,7 +18,9 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import stat
 import tempfile
+from pathlib import Path
 from unittest import mock
 
 from twisted.internet import defer
@@ -2471,7 +2473,7 @@ class TestGitPollerBareRepository(
         yield self.master.startService()
 
         self.poller_workdir = tempfile.mkdtemp(
-            prefix="TestGitPollerBareRepository",
+            prefix="TestGitPollerBareRepository_",
             dir=os.getcwd(),
         )
 
@@ -2488,7 +2490,23 @@ class TestGitPollerBareRepository(
         yield self.master.stopService()
         yield self.tearDownChangeSource()
 
-        shutil.rmtree(self.poller_workdir)
+        # on Win, git will mark objects as read-only
+        git_objects_path = Path(self.poller_workdir) / "objects"
+        for item in git_objects_path.rglob(''):
+            if not item.is_file():
+                continue
+
+            item.chmod(item.stat().st_mode | stat.S_IWUSR)
+
+        shutil.rmtree(self.poller_workdir, ignore_errors=True)
+
+        for item in git_objects_path.rglob(''):
+            if not item.is_file():
+                continue
+
+            print(f"{oct(item.stat().st_mode & 0o777)}: {item.path}")
+            item.chmod(item.stat().st_mode | stat.S_IWUSR)
+            print(f"{oct(item.stat().st_mode & 0o777)}: {item.path}")
 
     @async_to_deferred
     async def set_last_rev(self, state: dict[str, str]) -> None:
