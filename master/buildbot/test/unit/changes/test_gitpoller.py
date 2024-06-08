@@ -179,7 +179,16 @@ class TestGitPoller(TestGitPollerBase):
         filesRes = ['file1', 'file2', 'file_octal', 'file space']
         return self._perform_git_output_test(
             self.poller._get_commit_files,
-            ['log', '--name-only', '--no-walk', '--format=%n', self.dummyRevStr, '--'],
+            [
+                'log',
+                '--name-only',
+                '--no-walk',
+                '--format=%n',
+                '-m',
+                '--first-parent',
+                self.dummyRevStr,
+                '--',
+            ],
             filesBytes,
             filesRes,
             emptyRaisesException=False,
@@ -190,7 +199,16 @@ class TestGitPoller(TestGitPollerBase):
         filesStr = bytes2unicode(filesBytes)
         return self._perform_git_output_test(
             self.poller._get_commit_files,
-            ['log', '--name-only', '--no-walk', '--format=%n', self.dummyRevStr, '--'],
+            [
+                'log',
+                '--name-only',
+                '--no-walk',
+                '--format=%n',
+                '-m',
+                '--first-parent',
+                self.dummyRevStr,
+                '--',
+            ],
             filesBytes,
             [l for l in filesStr.splitlines() if l.strip()],
             emptyRaisesException=False,
@@ -2556,7 +2574,7 @@ class TestGitPollerBareRepository(
                     'codebase': None,
                     'comments': "Merge branch 'feature/1'",
                     'committer': 'test user <user@example.com>',
-                    'files': [],
+                    'files': ['README.md'],
                     'project': '',
                     'properties': {},
                     'repository': self.REPOURL,
