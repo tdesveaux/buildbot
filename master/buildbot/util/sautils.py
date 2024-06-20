@@ -140,6 +140,21 @@ def get_upsert_method(engine: Engine | None) -> _UpsertMethod:
     return _upsert_default
 
 
+def get_insert_if_not_method(engine: Engine | None):
+    if engine is None:
+        return _insert_if_not_default
+
+    # https://sqlite.org/lang_upsert.html
+    if engine.dialect.name == 'sqlite' and get_sqlite_version() > (3, 24, 0):
+        return _insert_if_not_sqlite
+    if engine.dialect.name == 'postgresql':
+        return _insert_if_not_postgresql
+    if engine.dialect.name == 'mysql':
+        return _insert_if_not_mysql
+
+    return _insert_if_not_default
+
+
 def _upsert_sqlite(
     connection: Connection,
     table: sa.Table,
@@ -160,6 +175,22 @@ def _upsert_sqlite(
     )
 
 
+def _insert_if_not_sqlite(
+    connection: Connection,
+    table: sa.Table,
+    *,
+    insert_values: Sequence[tuple[sa.Column, Any]],
+):
+    from sqlalchemy.dialects.sqlite import insert  # pylint: disable=import-outside-toplevel
+
+    return _insert_if_not_on_conflict_do_nothing(
+        insert,
+        connection,
+        table,
+        insert_values=insert_values,
+    )
+
+
 def _upsert_postgresql(
     connection: Connection,
     table: sa.Table,
@@ -177,6 +208,22 @@ def _upsert_postgresql(
         where_values=where_values,
         update_values=update_values,
         _race_hook=_race_hook,
+    )
+
+
+def _insert_if_not_postgresql(
+    connection: Connection,
+    table: sa.Table,
+    *,
+    insert_values: Sequence[tuple[sa.Column, Any]],
+):
+    from sqlalchemy.dialects.postgresql import insert  # pylint: disable=import-outside-toplevel
+
+    return _insert_if_not_on_conflict_do_nothing(
+        insert,
+        connection,
+        table,
+        insert_values=insert_values,
     )
 
 
@@ -204,6 +251,22 @@ def _upsert_on_conflict_do_update(
     connection.execute(do_update_stmt)
 
 
+def _insert_if_not_on_conflict_do_nothing(
+    insert: Any,
+    connection: Connection,
+    table: sa.Table,
+    *,
+    insert_values: Sequence[tuple[sa.Column, Any]],
+):
+    insert_stmt = insert(table).values(
+        **_column_value_kwargs(insert_values),
+    )
+    do_nothing_stmt = insert_stmt.on_conflict_do_nothing()
+    row = connection.execute(do_nothing_stmt)
+    connection.commit()
+    return row.inserted_primary_key[0]
+
+
 def _upsert_mysql(
     connection: Connection,
     table: sa.Table,
@@ -226,6 +289,26 @@ def _upsert_mysql(
         **update_kwargs,
     )
     connection.execute(on_duplicate_key_stmt)
+
+
+def _insert_if_not_mysql(
+    connection: Connection,
+    table: sa.Table,
+    *,
+    insert_values: Sequence[tuple[sa.Column, Any]],
+):
+    from sqlalchemy.dialects.mysql import insert  # pylint: disable=import-outside-toplevel
+
+    insert_kwargs = _column_value_kwargs(insert_values)
+    insert_stmt = insert(table).values(
+        **insert_kwargs,
+    )
+    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+        **insert_kwargs,
+    )
+    row = connection.execute(on_duplicate_key_stmt)
+    connection.commit()
+    return row.inserted_primary_key[0]
 
 
 def _upsert_default(
@@ -253,6 +336,25 @@ def _upsert_default(
             **_column_value_kwargs(update_values),
         )
     )
+
+
+def _insert_if_not_default(
+    connection: Connection,
+    table: sa.Table,
+    *,
+    insert_values: Sequence[tuple[sa.Column, Any]],
+):
+    try:
+        row = connection.execute(
+            table.insert().values(
+                **_column_value_kwargs(insert_values),
+            )
+        )
+        connection.commit()
+        return row.inserted_primary_key[0]
+    except (sa.exc.IntegrityError, sa.exc.ProgrammingError):
+        connection.rollback()
+        return None
 
 
 def _column_value_kwargs(values: Sequence[tuple[sa.Column, Any]]) -> dict[str, Any]:
