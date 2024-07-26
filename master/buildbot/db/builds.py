@@ -127,23 +127,20 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
         ssBuild: Sequence[SourceStampModel],
     ) -> BuildModel | None:
         gssfb = self.master.db.sourcestamps.getSourceStampsForBuild
-        rv = None
         tbl = self.db.model.builds
         offset = 0
         increment = 1000
         match_ss_build = {(ss.repository, ss.branch, ss.codebase) for ss in ssBuild}
+        where_clause = (
+            (tbl.c.builderid == builderid) & (tbl.c.number < number) & (tbl.c.results == 0)
+        )
 
-        while rv is None:
-            # Get some recent successful builds on the same builder
-            prev_builds = await self._getRecentBuilds(
-                whereclause=(
-                    (tbl.c.builderid == builderid) & (tbl.c.number < number) & (tbl.c.results == 0)
-                ),
-                offset=offset,
-                limit=increment,
-            )
-            if not prev_builds:
-                break
+        # Get some recent successful builds on the same builder
+        while prev_builds := await self._getRecentBuilds(
+            whereclause=where_clause,
+            offset=offset,
+            limit=increment,
+        ):
             for prev_build in prev_builds:
                 prevss_build = {
                     (ss.repository, ss.branch, ss.codebase) for ss in (await gssfb(prev_build.id))
@@ -151,11 +148,10 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                 if prevss_build == match_ss_build:
                     # A successful build with the same
                     # repository/branch/codebase was found !
-                    rv = prev_build
-                    break
+                    return prev_build
             offset += increment
 
-        return rv
+        return None
 
     def getBuildsForChange(self, changeid: int) -> defer.Deferred[list[BuildModel]]:
         assert changeid > 0
