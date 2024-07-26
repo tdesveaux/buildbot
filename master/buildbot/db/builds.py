@@ -119,35 +119,39 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
 
         return self.db.pool.do(thd)
 
-    @defer.inlineCallbacks
-    def getPrevSuccessfulBuild(
-        self, builderid: int, number: int, ssBuild: Sequence[SourceStampModel]
-    ):
+    @async_to_deferred
+    async def getPrevSuccessfulBuild(
+        self,
+        builderid: int,
+        number: int,
+        ssBuild: Sequence[SourceStampModel],
+    ) -> BuildModel | None:
         gssfb = self.master.db.sourcestamps.getSourceStampsForBuild
         rv = None
         tbl = self.db.model.builds
         offset = 0
         increment = 1000
-        matchssBuild = {(ss.repository, ss.branch, ss.codebase) for ss in ssBuild}
+        match_ss_build = {(ss.repository, ss.branch, ss.codebase) for ss in ssBuild}
+
         while rv is None:
             # Get some recent successful builds on the same builder
-            prevBuilds = yield self._getRecentBuilds(
+            prev_builds = await self._getRecentBuilds(
                 whereclause=(
                     (tbl.c.builderid == builderid) & (tbl.c.number < number) & (tbl.c.results == 0)
                 ),
                 offset=offset,
                 limit=increment,
             )
-            if not prevBuilds:
+            if not prev_builds:
                 break
-            for prevBuild in prevBuilds:
-                prevssBuild = {
-                    (ss.repository, ss.branch, ss.codebase) for ss in (yield gssfb(prevBuild.id))
+            for prev_build in prev_builds:
+                prevss_build = {
+                    (ss.repository, ss.branch, ss.codebase) for ss in (await gssfb(prev_build.id))
                 }
-                if prevssBuild == matchssBuild:
+                if prevss_build == match_ss_build:
                     # A successful build with the same
                     # repository/branch/codebase was found !
-                    rv = prevBuild
+                    rv = prev_build
                     break
             offset += increment
 
