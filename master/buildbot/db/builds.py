@@ -129,7 +129,8 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
         gssfb = self.master.db.sourcestamps.getSourceStampsForBuild
         tbl = self.db.model.builds
         offset = 0
-        increment = 1000
+        increment = 5
+        max_increment = 1000
         match_ss_build = {(ss.repository, ss.branch, ss.codebase) for ss in ssBuild}
         where_clause = (
             (tbl.c.builderid == builderid) & (tbl.c.number < number) & (tbl.c.results == 0)
@@ -150,6 +151,8 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     # repository/branch/codebase was found !
                     return prev_build
             offset += increment
+
+            increment = min(increment * 2, max_increment)
 
         return None
 
