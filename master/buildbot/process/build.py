@@ -105,6 +105,8 @@ class Build(properties.PropertiesMixin):
     stopped = False
     set_runtime_properties = True
 
+    POST_RUN_STEP_NAME = "post-run"
+
     class Sentinel:
         pass
 
@@ -688,7 +690,7 @@ class Build(properties.PropertiesMixin):
     def startNextStep(self) -> Deferred[None]:
         next_step = self.getNextStep()
         if next_step is None:
-            return self.allStepsDone()
+            return defer.Deferred.fromCoroutine(self.execute_steps_post_run())
         self.executedSteps.append(next_step)
         self.currentStep = next_step
 
@@ -755,6 +757,27 @@ class Build(properties.PropertiesMixin):
             self.results = RETRY
             terminate = True
         return terminate
+
+    async def execute_steps_post_run(self) -> None:
+        # for all executed steps
+        cleanup_step = self.setupBuildSteps([buildstep.BuildStep(name=self.POST_RUN_STEP_NAME)])[0]
+
+        for step in reversed(self.executedSteps):
+            # lost connection to worker. Abort
+            if not self.conn:
+                break
+
+            try:
+                await step.post_run()
+            except Exception:
+                log.err(
+                    None,
+                    f"Build {self} cleanup of step {step.name}",
+                )
+
+        self.steps.append(cleanup_step)
+
+        return await self.allStepsDone()
 
     def lostRemote(self, conn: None = None) -> None:
         # the worker went away. There are several possible reasons for this,
