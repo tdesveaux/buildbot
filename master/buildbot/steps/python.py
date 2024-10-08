@@ -13,17 +13,23 @@
 #
 # Copyright Buildbot Team Members
 
+from __future__ import annotations
+
 import re
+from pathlib import PurePath
+from typing import Iterable
 
 from twisted.internet import defer
 
 from buildbot import config
 from buildbot.process import buildstep
 from buildbot.process import logobserver
+from buildbot.process import remotecommand
 from buildbot.process.results import FAILURE
 from buildbot.process.results import SUCCESS
 from buildbot.process.results import WARNINGS
 from buildbot.process.results import statusToString
+from buildbot.steps.worker import RemoveDirectory
 
 
 class BuildEPYDoc(buildstep.ShellMixin, buildstep.BuildStep):
@@ -450,3 +456,177 @@ class Sphinx(buildstep.ShellMixin, buildstep.BuildStep):
                 return SUCCESS
             return WARNINGS
         return FAILURE
+
+
+class PythonVirtualEnv(buildstep.BuildStep):
+    """A Step to setup a virtual env for the Build"""
+
+    name: str = "python_venv"
+
+    haltOnFailure = True
+    flunkOnFailure = True
+    warnOnWarnings = True
+
+    def __init__(
+        self,
+        py_version: int | tuple[int, int] | None = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        self.py_version = py_version
+        if not (
+            py_version is None
+            or isinstance(py_version, int)
+            or (
+                isinstance(py_version, tuple)
+                and len(py_version) == 2
+                and all(isinstance(v, int) for v in py_version)
+            )
+        ):
+            config.error(
+                "PythonVirtualEnv: 'py_version' argument must be one of "
+                "None, PythonMajor (as int), or "
+                "tuple(PythonMajor, PythonMinor) (with both int)"
+            )
+
+    @property
+    def worker_is_win32(self) -> bool:
+        return self.worker.win32_worker
+
+    @property
+    def python_version_str(self) -> str:
+        if self.py_version is None:
+            return ''
+
+        if isinstance(self.py_version, int):
+            return str(self.py_version)
+
+        if isinstance(self.py_version, tuple):
+            major, minor = self.py_version
+            return f"{major}.{minor}"
+
+        raise TypeError(f"py_version unrecognized type {type(self.py_version)}")
+
+    @property
+    def worker_python(self) -> list[str]:
+        if self.worker_is_win32:
+            if self.py_version is None:
+                return ['py']
+            else:
+                return ['py', f"-{self.python_version_str}"]
+        else:
+            return [f'python{self.python_version_str}']
+
+    @property
+    def worker_python_bin_dirname(self) -> str:
+        return 'Scripts' if self.worker_is_win32 else 'bin'
+
+    def get_worker_tmp(self) -> str | None:
+        assert self.build is not None
+        assert self.worker is not None
+
+        tmp_env_vars = ['TMPDIR']
+        tmp_default: str | None = '/tmp'
+        if self.worker_is_win32:
+            tmp_env_vars = ['TMP', 'TEMP']
+            tmp_default = None
+
+        for env_var in tmp_env_vars:
+            if value := self.build.env.get(env_var):
+                return value
+            if value := self.worker.worker_environ.get(env_var):
+                return value
+
+        return tmp_default
+
+    async def create_venv(self) -> PurePath | None:
+        tmp_dir = self.get_worker_tmp()
+        if tmp_dir is None:
+            return None
+
+        assert self.build is not None
+        assert self.worker is not None
+        venv_path = self.worker.path_cls(
+            tmp_dir,
+            f"{self.build.buildid}_venv_{self.python_version_str}",
+        )
+
+        venv_cmd = remotecommand.RemoteShellCommand(
+            workdir=self.workdir,
+            command=[
+                *self.worker_python,
+                "-m",
+                "venv",
+                "--clear",
+                venv_path,
+            ],
+        )
+        await self.runCommand(venv_cmd)
+        if venv_cmd.results() != SUCCESS:
+            # try delete venv if anything was created just in case
+            await self.runCommand(
+                remotecommand.RemoteCommand(
+                    'rmdir',
+                    {'dir': venv_path},
+                    ignore_updates=True,
+                )
+            )
+            return None
+
+        return venv_path
+
+    async def run_async(self) -> int:
+        venv_path = await self.create_venv()
+        if venv_path is None:
+            return FAILURE
+
+        def _hide_step_if_not_successful(result: int, _step: buildstep.BuildStep) -> bool:
+            return result == SUCCESS
+
+        assert self.build is not None
+        self.build.add_cleanup_steps([
+            RemoveDirectory(
+                name=f"{self.name}_cleanup",
+                dir=venv_path,
+                alwaysRun=True,
+                hideStepIf=_hide_step_if_not_successful,
+                haltOnFailure=False,
+                flunkOnFailure=False,
+                flunkOnWarnings=False,
+                warnOnFailure=True,
+                warnOnWarnings=True,
+            )
+        ])
+
+        properties = self.getProperties()
+        properties.setProperty('virtualenv_path', venv_path, source=self.name, runtime=True)
+
+        assert self.worker is not None
+        python_bin_path = self.worker.path_cls(venv_path, self.worker_python_bin_dirname)
+        properties.setProperty(
+            'virtualenv_bin_path',
+            str(python_bin_path),
+            source=self.name,
+            runtime=True,
+        )
+
+        venv_python_bin = self.worker.path_module.join(python_bin_path, 'python')
+        properties.setProperty('venv_python_bin', venv_python_bin, source=self.name, runtime=True)
+
+        # set envvars for remaining steps
+        self.build.env["VIRTUAL_ENV"] = venv_path
+
+        if path := self.build.env.get("PATH"):
+            # if BuilderConfig or another step set PATH, add to it
+            if isinstance(path, Iterable) and not isinstance(path, str):
+                self.build.env["PATH"] = [python_bin_path, *path]
+            else:
+                self.build.env["PATH"] = [python_bin_path, path]
+        else:
+            self.build.env["PATH"] = [python_bin_path, "${PATH}"]
+
+        return SUCCESS
+
+    def run(self):
+        return defer.Deferred.fromCoroutine(self.run_async())
