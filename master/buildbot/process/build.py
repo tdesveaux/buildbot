@@ -112,7 +112,9 @@ class Build(properties.PropertiesMixin):
         self.buildid: int | None = None
         self._buildid_notifier: Notifier[int] = Notifier()
         self.number = None
+        self.steps: list[interfaces.IBuildStep] = []
         self.executedSteps: list[buildstep.BuildStep] = []
+        self.cleanup_steps: list[buildstep.BuildStep] = []
         self.stepnames: dict[str, int] = {}
 
         self.terminate = False
@@ -574,8 +576,8 @@ class Build(properties.PropertiesMixin):
             self.stepnames[name] = 0
         return name
 
-    def setupBuildSteps(self, step_factories):
-        steps = []
+    def setupBuildSteps(self, step_factories) -> list[IBuildStep]:
+        steps: list[IBuildStep] = []
         for factory in step_factories:
             step = buildstep.create_step_from_step_or_factory(factory)
             step.setBuild(self)
@@ -620,7 +622,7 @@ class Build(properties.PropertiesMixin):
     def startNextStep(self):
         next_step = self.getNextStep()
         if next_step is None:
-            return self.allStepsDone()
+            return defer.Deferred.fromCoroutine(self.start_steps_cleanup())
         self.executedSteps.append(next_step)
         self.currentStep = next_step
 
@@ -678,6 +680,26 @@ class Build(properties.PropertiesMixin):
             self.results = RETRY
             terminate = True
         return terminate
+
+    async def start_steps_cleanup(self) -> None:
+        # for all executed steps
+        cleanup_step = self.setupBuildSteps([buildstep.BuildStep()])[0]
+        self.steps.append(cleanup_step)
+
+        for step in reversed(self.executedSteps):
+            # lost connection to worker. Abort
+            if not self.conn:
+                break
+
+            try:
+                await step.cleanup()
+            except Exception:
+                log.err(
+                    None,
+                    f"Build {self} cleanup of step {step.name}",
+                )
+
+        return await self.allStepsDone()
 
     def lostRemote(self, conn=None):
         # the worker went away. There are several possible reasons for this,

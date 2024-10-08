@@ -917,6 +917,9 @@ class BuildStep(
     def setStatistic(self, name: str, value: int) -> None:
         self.statistics[name] = value
 
+    async def cleanup(self) -> None:
+        pass
+
 
 class CommandMixin:
     getLog: Callable[[str], plog.Log]

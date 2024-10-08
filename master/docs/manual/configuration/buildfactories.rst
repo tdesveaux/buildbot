@@ -150,6 +150,39 @@ Each stage is then run in this example using ``./build.sh --run-stage <stage nam
         command=["./build.sh", "--list-stages"],
         haltOnFailure=True))
 
+:class:`Build` also provide a way for BuildSteps to register cleanup steps:
+
+``add_cleanup_steps(self, step_factories)``
+    This adds cleanup steps that will be executed at the end of the build.
+    Note that cleanup steps are executed in a Last In - First Out manner.
+
+For example, you could have a step that create a temporary Python Virtual Environment that you'd like to remove after the job.
+
+.. code-block:: python
+
+    from buildbot.plugins import util, steps
+    from buildbot.process import buildstep, logobserver
+    from twisted.internet import defer
+
+    class CreatePythonVirtualEnv(steps.BuildStep):
+
+        ...
+
+        async def create_venv(self) -> str | None:
+            ...
+
+        @defer.inlineCallbacks
+        def run(self):
+            venv_path = yield defer.Deferred.fromCoroutine(self.create_venv())
+            if venv_path is not None:
+                self.build.add_cleanup_steps([steps.RemoveDirectory(dir=venv_path)])
+
+            return result
+
+    f = util.BuildFactory()
+    f.addStep(CreatePythonVirtualEnv())
+    f.addStep(steps.Git(repourl=repourl))
+
 Predefined Build Factories
 --------------------------
 
