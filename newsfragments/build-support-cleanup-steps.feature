@@ -1,0 +1,1 @@
+:class:`Build` now has a ``add_cleanup_steps`` allowing to register steps to perform cleanup

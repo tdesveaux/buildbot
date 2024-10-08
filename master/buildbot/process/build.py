@@ -133,7 +133,9 @@ class Build(properties.PropertiesMixin):
         self.buildid: int | None = None
         self._buildid_notifier: Notifier[int] = Notifier()
         self.number: int | None = None
+        self.steps: list[interfaces.IBuildStep] = []
         self.executedSteps: list[IBuildStep] = []
+        self.cleanup_steps: list[buildstep.BuildStep] = []
         self.stepnames: dict[str, int] = {}
 
         self.subs: Subscription | None = None
@@ -674,12 +676,27 @@ class Build(properties.PropertiesMixin):
         # Add the new steps to the end.
         self.steps.extend(self.setupBuildSteps(step_factories))
 
+    def add_cleanup_steps(self, step_factories):
+        """
+        Add a cleanup step to this build.
+        Note that cleanup steps are executed in a Last In - First Out manner.
+        """
+        self.cleanup_steps.extend(self.setupBuildSteps(step_factories))
+
     def getNextStep(self) -> IBuildStep | None:
         """This method is called to obtain the next BuildStep for this build.
         When it returns None, the build is complete."""
         while self.steps and self.conn:
             s = self.steps.pop(0)
             assert isinstance(s, BuildStep)
+            if not (self.terminate or self.stopped) or s.alwaysRun:
+                return s
+
+        while self.cleanup_steps:
+            if not self.conn:
+                return None
+            # Last In - First Out for cleanup steps
+            s = self.cleanup_steps.pop()
             if not (self.terminate or self.stopped) or s.alwaysRun:
                 return s
 

@@ -51,6 +51,7 @@ from buildbot.test.fake import fakemaster
 from buildbot.test.fake import fakeprotocol
 from buildbot.test.fake import worker
 from buildbot.test.reactor import TestReactorMixin
+from buildbot.util.twisted import async_to_deferred
 
 if TYPE_CHECKING:
     from buildbot.process.builder import Builder
@@ -824,6 +825,42 @@ class TestBuild(TestReactorMixin, unittest.TestCase):
         yield b.startBuild(self.workerforbuilder)
         self.assertEqual(b.results, SUCCESS)
         expected_names = ["a", "b", "c", "d", "e"]
+        executed_names = [s.name for s in b.executedSteps]
+        self.assertEqual(executed_names, expected_names)
+
+    @async_to_deferred
+    async def test_add_cleanup_steps(self):
+        b = self.build
+
+        def start_cleanup_step(step):
+            def _impl(*args, **kw):
+                b.add_cleanup_steps([
+                    FakeStepFactory(s)
+                    for s in self.create_fake_steps([
+                        f"cleanup_{step.name}_part2",
+                        f"cleanup_{step.name}_part1",
+                    ])
+                ])
+                return SUCCESS
+
+            step.startStep = _impl
+
+        steps = self.create_fake_steps(["a", "b", "c"])
+        start_cleanup_step(steps[0])
+        start_cleanup_step(steps[1])
+        b.setStepFactories([FakeStepFactory(s) for s in steps])
+
+        await b.startBuild(self.workerforbuilder)
+        self.assertEqual(b.results, SUCCESS)
+        expected_names = [
+            "a",
+            "b",
+            "c",
+            "cleanup_b_part1",
+            "cleanup_b_part2",
+            "cleanup_a_part1",
+            "cleanup_a_part2",
+        ]
         executed_names = [s.name for s in b.executedSteps]
         self.assertEqual(executed_names, expected_names)
 
