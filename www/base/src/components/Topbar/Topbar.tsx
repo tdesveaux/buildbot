@@ -50,8 +50,8 @@ export const Topbar = observer(({store, appTitle, children}: TopbarProps) => {
         <Nav className="mr-auto bb-topbar-navbar-elements">
           {elements}
         </Nav>
-        {children}
       </Navbar.Collapse>
+      {children}
     </Navbar>
   );
 });

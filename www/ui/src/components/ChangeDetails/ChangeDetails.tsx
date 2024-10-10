@@ -103,9 +103,9 @@ export const ChangeDetails = observer(({change, compact, showDetails, setShowDet
   const popoverWithText = (id: string, text: string) => {
     return (
       <Popover id={"bb-popover-change-details-" + id}>
-        <Popover.Content>
+        <Popover.Body>
           {text}
-        </Popover.Content>
+        </Popover.Body>
       </Popover>
     );
   }
