@@ -49,7 +49,7 @@ $gl-sidebar-small-threshold: 600px;
 .navbar-light .bb-topbar-navbar-elements .nav-link {
   color: $link-color;
 
-  @include hover() {
+  &:hover {
     color: $link-hover-color;
     text-decoration: $link-hover-decoration;
   }
