@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import copy
 from functools import reduce
 from typing import TYPE_CHECKING
 from typing import cast
@@ -46,6 +47,8 @@ from buildbot.util import bytes2unicode
 from buildbot.util.eventual import eventually
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from buildbot.interfaces import IBuildStep
     from buildbot.locks import BaseLockId
     from buildbot.process.builder import Builder
@@ -136,6 +139,11 @@ class Build(properties.PropertiesMixin):
         # tracks the config version for locks
         self.config_version = builder.config_version
 
+        # mutable env, steps can update this for following steps
+        self.env: dict[str, Any] = {}
+        if builder.config is not None:
+            self.env = copy.deepcopy(builder.config.env)
+
     def getProperties(self):
         return self.properties
 
@@ -146,7 +154,7 @@ class Build(properties.PropertiesMixin):
     def _setup_locks(self):
         self._locks_to_acquire = yield get_real_locks_from_accesses(self.locks, self)
 
-    def setWorkerEnvironment(self, env):
+    def setWorkerEnvironment(self, env: dict[str, Any]) -> None:
         # TODO: remove once we don't have anything depending on this method or attribute
         # e.g., old-style steps (ShellMixin pulls the environment out of the
         # builder directly)

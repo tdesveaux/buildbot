@@ -1084,10 +1084,8 @@ class ShellMixin:
 
         # merge the builder's environment with that supplied here
         assert self.build is not None
-        assert self.build.builder.config is not None
-        builderEnv = self.build.builder.config.env
         kwargs['env'] = {
-            **(yield self.build.render(builderEnv)),
+            **(yield self.build.render(self.build.env)),
             **kwargs['env'],
         }
         kwargs['stdioLogName'] = stdioLogName
