@@ -1,0 +1,2 @@
+:class:`Build` now has a ``env`` member, initialized from a copy of it's associated :class:`BuilderConfig`'s ``env``.
+This member is mutable by steps, allowing previous step to prepare an environment for later steps.

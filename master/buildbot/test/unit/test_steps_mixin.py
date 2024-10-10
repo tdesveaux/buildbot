@@ -59,7 +59,9 @@ class TestTestBuildStepMixin(TestBuildStepMixin, TestReactorMixin, unittest.Test
     @defer.inlineCallbacks
     def test_setup_build(self):
         self.setup_build(
-            worker_version={"*": "2.9"}, worker_env={"key": "value"}, build_files=["build.txt"]
+            worker_version={"*": "2.9"},
+            builder_config_env={"key": "value"},
+            build_files=["build.txt"],
         )
         self.setup_step(TestStep("step1"))
         self.expect_commands(
@@ -78,15 +80,15 @@ class TestTestBuildStepMixin(TestBuildStepMixin, TestReactorMixin, unittest.Test
 
     @defer.inlineCallbacks
     def test_old_setup_step_args(self):
+        self.setup_build(builder_config_env={"key": "value"})
         with assertProducesWarnings(
             DeprecatedApiWarning,
-            num_warnings=3,
+            num_warnings=2,
             message_pattern=".*has been deprecated, use setup_build\\(\\) to pass this information",
         ):
             self.setup_step(
                 TestStep("step1"),
                 worker_version={"*": "2.9"},
-                worker_env={"key": "value"},
                 build_files=["build.txt"],
             )
         self.expect_commands(
