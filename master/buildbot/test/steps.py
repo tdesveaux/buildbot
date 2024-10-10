@@ -680,6 +680,7 @@ class TestBuildStepMixin:
 
         self._worker_version = None
         self._worker_env = None
+        self._builder_config_env = None
         self._build_files = None
 
         self.worker = worker.FakeWorker(self.master)
@@ -706,12 +707,14 @@ class TestBuildStepMixin:
     def tear_down_test_build_step(self):
         pass
 
-    def _setup_fake_build(self, worker_version, worker_env, build_files):
+    def _setup_fake_build(self, worker_version, worker_env, builder_config_env, build_files):
         if worker_version is None:
             worker_version = {'*': '99.99'}
 
         if worker_env is None:
             worker_env = {}
+        if builder_config_env is None:
+            builder_config_env = {}
 
         if build_files is None:
             build_files = []
@@ -729,14 +732,22 @@ class TestBuildStepMixin:
 
         build.getWorkerCommandVersion = getWorkerVersion
         build.workerEnvironment = worker_env.copy()
-        build.builder.config.env = worker_env.copy()
+        build.env.update(builder_config_env.copy())
 
         return build
 
-    def setup_build(self, worker_version=None, worker_env=None, build_files=None):
+    def setup_build(
+        self,
+        worker_version=None,
+        worker_env=None,
+        builder_config_env=None,
+        build_files=None,
+    ):
         self._worker_version = worker_version
         self._worker_env = worker_env
         self._build_files = build_files
+        if builder_config_env is not None:
+            self._builder_config_env = builder_config_env
 
     def setup_step(
         self,
@@ -764,7 +775,9 @@ class TestBuildStepMixin:
 
         if worker_version is not None or worker_env is not None or build_files is not None:
             self.setup_build(
-                worker_version=worker_version, worker_env=worker_env, build_files=build_files
+                worker_version=worker_version,
+                worker_env=worker_env,
+                build_files=build_files,
             )
 
         step = buildstep.create_step_from_step_or_factory(step)
@@ -775,7 +788,10 @@ class TestBuildStepMixin:
 
         if self.build is None:
             self.build = self._setup_fake_build(
-                self._worker_version, self._worker_env, self._build_files
+                self._worker_version,
+                self._worker_env,
+                self._builder_config_env,
+                self._build_files,
             )
 
         step.setBuild(self.build)

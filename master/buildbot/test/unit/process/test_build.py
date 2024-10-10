@@ -192,6 +192,7 @@ class TestBuild(TestReactorMixin, unittest.TestCase):
         self.worker = worker.FakeWorker(self.master)
         self.worker.attached(None)
         self.builder = FakeBuilder(self.master)
+        self.builder.config.env = {'BUILDER_ENV_VAR': 'BUILDER_ENV_VALUE'}
         self.build = Build([r], self.builder)
         self.build.conn = fakeprotocol.FakeConnection(self.worker)
         self.build.workername = self.worker.workername
@@ -918,6 +919,38 @@ class TestBuild(TestReactorMixin, unittest.TestCase):
         self.flushLoggedErrors(TestException)
 
         self.assertEqual(get_active_builds(), 0)
+
+    async def test_step_that_mutate_build_env(self):
+        class _FakeBuildStepEnvMutate(FakeBuildStep):
+            def run(self):
+                assert self.build is not None
+                self.build.env['STEP_ENV_VAR'] = 'STEP_ENV_VALUE'
+                # mutate env from Builder config
+                self.build.env['BUILDER_ENV_VAR'] = 'BUILDER_ENV_UPDATED_VALUE'
+                return super().run()
+
+        self.build.setStepFactories([
+            FakeStepFactory(create_step_from_step_or_factory(_FakeBuildStepEnvMutate()))
+        ])
+
+        # build did copy builder config env
+        self.assertEqual(self.build.env['BUILDER_ENV_VAR'], 'BUILDER_ENV_VALUE')
+
+        await self.build.startBuild(self.workerforbuilder)
+        self.assertEqual(self.build.results, SUCCESS)
+        executed_names = [s.name for s in self.build.executedSteps]
+        self.assertEqual(executed_names, ['fake'])
+
+        # did not mutate builder config env
+        self.assertEqual(self.builder.config.env['BUILDER_ENV_VAR'], 'BUILDER_ENV_VALUE')
+        # did mutate build env
+        self.assertEqual(
+            self.build.env,
+            {
+                'STEP_ENV_VAR': 'STEP_ENV_VALUE',
+                'BUILDER_ENV_VAR': 'BUILDER_ENV_UPDATED_VALUE',
+            },
+        )
 
 
 class TestMultipleSourceStamps(TestReactorMixin, unittest.TestCase):

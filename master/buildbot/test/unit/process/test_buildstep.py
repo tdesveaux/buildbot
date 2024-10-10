@@ -1365,6 +1365,21 @@ class TestShellMixin(
         self.expect_outcome(result=SUCCESS)
         yield self.run_step()
 
+    async def test_step_env_from_build_env(self):
+        build_env = {'BUILD_ENV': 'VALUE'}
+        self.setup_build(builder_config_env=build_env)
+        env = {'ENV': 'TRUE'}
+        self.setup_step(SimpleShellCommand(command=['cmd', 'arg'], env=env))
+        self.expect_commands(
+            ExpectShell(
+                workdir='wkdir',
+                command=['cmd', 'arg'],
+                env=env | build_env,
+            ).exit(0)
+        )
+        self.expect_outcome(result=SUCCESS)
+        await self.run_step()
+
     @defer.inlineCallbacks
     def test_extra_logfile(self):
         self.setup_step(
@@ -1438,8 +1453,8 @@ class TestShellMixin(
 
     @defer.inlineCallbacks
     def test_env(self):
+        self.setup_build(builder_config_env={'FOO': 'FOO'})
         self.setup_step(SimpleShellCommand(command=['cmd', 'arg'], env={'BAR': 'BAR'}))
-        self.build.builder.config.env = {'FOO': 'FOO'}
         self.expect_commands(
             ExpectShell(
                 workdir='wkdir', command=['cmd', 'arg'], env={'FOO': 'FOO', 'BAR': 'BAR'}

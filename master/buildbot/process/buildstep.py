@@ -1000,9 +1000,8 @@ class ShellMixin:
         del kwargs['lazylogfiles']
 
         # merge the builder's environment with that supplied here
-        builderEnv = self.build.builder.config.env
         kwargs['env'] = {
-            **(yield self.build.render(builderEnv)),
+            **(yield self.build.render(self.build.env)),
             **kwargs['env'],
         }
         kwargs['stdioLogName'] = stdioLogName

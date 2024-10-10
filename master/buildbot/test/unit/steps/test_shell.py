@@ -122,7 +122,7 @@ class TestShellCommandExecution(
         return self.run_step()
 
     def test_run_env(self):
-        self.setup_build(worker_env={"DEF": 'HERE'})
+        self.setup_build(builder_config_env={"DEF": 'HERE'})
         self.setup_step(shell.ShellCommand(workdir='build', command="echo hello"))
         self.expect_commands(
             ExpectShell(workdir='build', command='echo hello', env={"DEF": 'HERE'}).exit(0)
@@ -130,8 +130,25 @@ class TestShellCommandExecution(
         self.expect_outcome(result=SUCCESS)
         return self.run_step()
 
+    async def test_step_env_from_build_env(self):
+        builder_config_env = {"DEF": 'HERE'}
+        self.setup_build(builder_config_env=builder_config_env)
+        self.setup_step(shell.ShellCommand(workdir='build', command="echo hello"))
+        assert self.build is not None
+        build_env = {'BUILD_ENV': 'VALUE'}
+        self.build.env.update(build_env)
+        self.expect_commands(
+            ExpectShell(
+                workdir='build',
+                command='echo hello',
+                env=builder_config_env | build_env,
+            ).exit(0)
+        )
+        self.expect_outcome(result=SUCCESS)
+        await self.run_step()
+
     def test_run_env_override(self):
-        self.setup_build(worker_env={"ABC": 'XXX', "DEF": 'HERE'})
+        self.setup_build(builder_config_env={"ABC": 'XXX', "DEF": 'HERE'})
         self.setup_step(
             shell.ShellCommand(workdir='build', env={'ABC': '123'}, command="echo hello"),
         )
