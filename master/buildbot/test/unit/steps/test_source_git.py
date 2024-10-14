@@ -748,7 +748,7 @@ class TestGit(
                 repourl='http://github.com/buildbot/buildbot.git', mode='full', method='clean'
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
         self.expect_commands(
             ExpectShell(workdir='wkdir', command=['git', '--version'])
             .stdout('git version 1.7.5')
@@ -787,7 +787,7 @@ class TestGit(
                 sshPrivateKey='sshkey',
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
 
         ssh_workdir = '\\wrk\\.bldr.wkdir.buildbot'
         ssh_key_path = '\\wrk\\.bldr.wkdir.buildbot\\ssh-key'
@@ -843,7 +843,7 @@ class TestGit(
                 sshPrivateKey='sshkey',
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
 
         ssh_workdir = '\\wrk\\.bldr.wkdir.buildbot'
         ssh_key_path = '\\wrk\\.bldr.wkdir.buildbot\\ssh-key'
@@ -898,7 +898,7 @@ class TestGit(
                 sshPrivateKey='sshkey',
             )
         )
-        self.change_worker_system('win32')
+        self.change_worker_system('nt')
 
         ssh_workdir = '\\wrk\\.bldr.wkdir.buildbot'
         ssh_key_path = '\\wrk\\.bldr.wkdir.buildbot\\ssh-key'
