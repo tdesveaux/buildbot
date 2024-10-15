@@ -109,8 +109,8 @@ class Build(properties.PropertiesMixin):
         self.currentStep = None
 
         self.workerEnvironment: dict[str, str] = {}
-        self.buildid = None
-        self._buildid_notifier = Notifier()
+        self.buildid: int | None = None
+        self._buildid_notifier: Notifier[int] = Notifier()
         self.number = None
         self.steps: list[interfaces.IBuildStep] = []
         self.executedSteps: list[buildstep.BuildStep] = []
@@ -348,6 +348,7 @@ class Build(properties.PropertiesMixin):
         self.buildid, self.number = yield self.master.data.updates.addBuild(
             builderid=builderid, buildrequestid=brid, workerid=worker.workerid
         )
+        assert self.buildid is not None
         self._buildid_notifier.notify(self.buildid)
 
         assert self.master.mq is not None
