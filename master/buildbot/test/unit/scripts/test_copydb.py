@@ -60,10 +60,10 @@ class TestCopyDb(misc.StdoutAssertionsMixin, dirs.DirsMixin, TestReactorMixin, u
         write_buildbot_tac(os.path.join('basedir', 'buildbot.tac'))
         self.setUpStdoutAssertions()
 
-    @defer.inlineCallbacks
-    def tearDown(self):
-        self.tearDownDirs()
-        yield self.tear_down_test_reactor()
+    @async_to_deferred
+    async def tearDown(self):
+        await self.tearDownDirs()
+        self.tear_down_test_reactor()
 
     def create_master_cfg(self, db_url='sqlite://', extraconfig=""):
         with open(os.path.join('basedir', 'master.cfg'), "w", encoding='utf-8') as f:
