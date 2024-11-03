@@ -18,7 +18,6 @@ import os
 import queue
 
 import sqlalchemy as sa
-from twisted.internet import defer
 
 from buildbot import config as config_module
 from buildbot.db import connector
@@ -133,7 +132,6 @@ async def _copy_single_table(
     column_keys = table.columns.keys()
 
     rows_queue = queue.Queue(32)
-    written_count = [0]
     total_count = [0]
 
     autoincrement_foreign_key_column = None
@@ -165,9 +163,9 @@ async def _copy_single_table(
                 ids.add(getattr(row, column.name))
         return ids
 
-    def thd_write(conn):
+    def thd_write(conn: sa.Connection) -> None:
         max_column_id = 0
-
+        written_count = 0
         foreign_key_check_rows = []
         if ignore_fk_error_rows:
             foreign_key_check_rows = [
@@ -175,74 +173,61 @@ async def _copy_single_table(
                 for column_name, fk_column in foreign_key_check_columns
             ]
 
-        while True:
-            try:
-                rows = rows_queue.get(timeout=1)
-                if rows is None:
-                    if autoincrement_foreign_key_column is not None and max_column_id != 0:
-                        if dst_db.pool.engine.dialect.name == 'postgresql':
-                            # Explicitly inserting primary row IDs does not bump the primary key
-                            # sequence on Postgres
-                            seq_name = f"{table_name}_{autoincrement_foreign_key_column}_seq"
-                            transaction = conn.begin()
-                            conn.execute(
-                                sa.text(
-                                    f"ALTER SEQUENCE {seq_name} RESTART WITH {max_column_id + 1}"
-                                )
-                            )
-                            transaction.commit()
+        while (rows := rows_queue.get()) is not None:
+            row_dicts = [{k: getattr(row, k) for k in column_keys} for row in rows]
 
-                    rows_queue.task_done()
-                    return
+            if autoincrement_foreign_key_column is not None:
+                for row in row_dicts:
+                    max_column_id = max(max_column_id, row[autoincrement_foreign_key_column])
 
-                row_dicts = [{k: getattr(row, k) for k in column_keys} for row in rows]
+            if ignore_fk_error_rows:
+                for column_name, id_rows in foreign_key_check_rows:
+                    row_dicts = _thd_check_rows_foreign_keys(
+                        table_name, row_dicts, column_name, id_rows, print_log
+                    )
 
-                if autoincrement_foreign_key_column is not None:
-                    for row in row_dicts:
-                        max_column_id = max(max_column_id, row[autoincrement_foreign_key_column])
+            if table_name == "buildsets":
+                for row_dict in row_dicts:
+                    if row_dict["parent_buildid"] is not None:
+                        buildset_to_parent_buildid.append((
+                            row_dict["id"],
+                            row_dict["parent_buildid"],
+                        ))
+                    row_dict["parent_buildid"] = None
 
-                if ignore_fk_error_rows:
-                    for column_name, id_rows in foreign_key_check_rows:
-                        row_dicts = _thd_check_rows_foreign_keys(
-                            table_name, row_dicts, column_name, id_rows, print_log
-                        )
+                    if row_dict['rebuilt_buildid'] is not None:
+                        buildset_to_rebuilt_buildid.append((
+                            row_dict['id'],
+                            row_dict['rebuilt_buildid'],
+                        ))
+                    row_dict['rebuilt_buildid'] = None
 
-                if table_name == "buildsets":
-                    for row_dict in row_dicts:
-                        if row_dict["parent_buildid"] is not None:
-                            buildset_to_parent_buildid.append((
-                                row_dict["id"],
-                                row_dict["parent_buildid"],
-                            ))
-                        row_dict["parent_buildid"] = None
-
-                        if row_dict['rebuilt_buildid'] is not None:
-                            buildset_to_rebuilt_buildid.append((
-                                row_dict['id'],
-                                row_dict['rebuilt_buildid'],
-                            ))
-                        row_dict['rebuilt_buildid'] = None
-
-            except queue.Empty:
-                continue
+            written_count += len(rows)
+            print_log(
+                f"Copying {len(rows)} items ({written_count}/{total_count[0]}) "
+                f"for {table_name} table"
+            )
 
             try:
-                written_count[0] += len(rows)
-                print_log(
-                    f"Copying {len(rows)} items ({written_count[0]}/{total_count[0]}) "
-                    f"for {table_name} table"
-                )
-
                 if len(row_dicts) > 0:
                     conn.execute(table.insert(), row_dicts)
-                    conn.commit()
-
             finally:
                 rows_queue.task_done()
 
-    def thd_read(conn):
+        if autoincrement_foreign_key_column is not None and max_column_id != 0:
+            if dst_db.pool.engine.dialect.name == 'postgresql':
+                # Explicitly inserting primary row IDs does not bump the primary key
+                # sequence on Postgres
+                seq_name = f"{table_name}_{autoincrement_foreign_key_column}_seq"
+                conn.exec_driver_sql(f"ALTER SEQUENCE {seq_name} RESTART WITH {max_column_id + 1}")
+
+        rows_queue.task_done()
+
+    def thd_read(conn: sa.Connection) -> None:
         q = sa.select(sa.sql.func.count()).select_from(table)
-        total_count[0] = conn.execute(q).scalar()
+        count = conn.execute(q).scalar()
+        assert count is not None
+        total_count[0] = count
 
         result = conn.execute(sa.select(table))
         while True:
@@ -253,8 +238,11 @@ async def _copy_single_table(
 
         rows_queue.put(None)
 
-    tasks = [src_db.pool.do(thd_read), dst_db.pool.do(thd_write)]
-    await defer.gatherResults(tasks)
+    read_task = src_db.pool.do(thd_read)
+    write_task = dst_db.pool.do_with_transaction(thd_write)
+
+    await write_task
+    await read_task
 
     rows_queue.join()
 
@@ -346,7 +334,7 @@ async def _copy_database_with_db(src_db, dst_db, ignore_fk_error_rows, print_log
                 ],
             )
 
-    await dst_db.pool.do(thd_write_buildset_parent_buildid)
+    await dst_db.pool.do_with_transaction(thd_write_buildset_parent_buildid)
 
     def thd_write_buildset_rebuilt_buildid(conn):
         written_count = 0
@@ -369,6 +357,6 @@ async def _copy_database_with_db(src_db, dst_db, ignore_fk_error_rows, print_log
                 ],
             )
 
-    await dst_db.pool.do(thd_write_buildset_rebuilt_buildid)
+    await dst_db.pool.do_with_transaction(thd_write_buildset_rebuilt_buildid)
 
     print_log("Copy complete")
