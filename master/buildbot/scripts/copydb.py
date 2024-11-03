@@ -18,7 +18,6 @@ import os
 import queue
 
 import sqlalchemy as sa
-from twisted.internet import defer
 
 from buildbot import config as config_module
 from buildbot.db import connector
@@ -37,8 +36,7 @@ def copy_database(config):  # pragma: no cover
     return _copy_database_in_reactor(config)
 
 
-@defer.inlineCallbacks
-def _copy_database_in_reactor(config):
+async def _copy_database_in_reactor(config):
     if not base.checkBasedir(config):
         return 1
 
@@ -46,12 +44,13 @@ def _copy_database_in_reactor(config):
 
     def print_log(*args, **kwargs):
         if print_debug:
-            print(*args, **kwargs)
+            print(*args, **kwargs, flush=True)
 
     config['basedir'] = os.path.abspath(config['basedir'])
 
     with base.captureErrors(
-        (SyntaxError, ImportError), f"Unable to load 'buildbot.tac' from '{config['basedir']}':"
+        (SyntaxError, ImportError),
+        f"Unable to load 'buildbot.tac' from '{config['basedir']}':",
     ):
         config_file = base.getConfigFileFromTac(config['basedir'])
 
@@ -77,7 +76,7 @@ def _copy_database_in_reactor(config):
     master_src = BuildMaster(config['basedir'])
     master_src.config = master_src_cfg
     try:
-        yield master_src.db.setup(check_version=True, verbose=not config["quiet"])
+        await master_src.db.setup(check_version=True, verbose=not config["quiet"])
     except exceptions.DatabaseNotReadyError:
         for l in connector.upgrade_message.format(basedir=config['basedir']).split('\n'):
             print(l)
@@ -85,14 +84,20 @@ def _copy_database_in_reactor(config):
 
     master_dst = BuildMaster(config['basedir'])
     master_dst.config = master_dst_cfg
-    yield master_dst.db.setup(check_version=False, verbose=not config["quiet"])
-    yield master_dst.db.model.upgrade()
-    yield _copy_database_with_db(master_src.db, master_dst.db, print_log)
+    await master_dst.db.setup(check_version=False, verbose=not config["quiet"])
+    await master_dst.db.model.upgrade()
+    await _copy_database_with_db(master_src.db, master_dst.db, print_log)
     return 0
 
 
-@defer.inlineCallbacks
-def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_buildid, print_log):
+async def _copy_single_table(
+    src_db,
+    dst_db,
+    table,
+    table_name,
+    buildset_to_parent_buildid,
+    print_log,
+):
     column_keys = table.columns.keys()
 
     rows_queue = queue.Queue(32)
@@ -160,22 +165,21 @@ def _copy_single_table(src_db, dst_db, table, table_name, buildset_to_parent_bui
         total_count[0] = conn.execute(q).scalar()
 
         result = conn.execute(sa.select(table))
-        while True:
-            chunk = result.fetchmany(10000)
-            if not chunk:
-                break
+        while chunk := result.fetchmany(10000):
             rows_queue.put(chunk)
 
         rows_queue.put(None)
 
-    tasks = [src_db.pool.do(thd_read), dst_db.pool.do(thd_write)]
-    yield defer.gatherResults(tasks)
+    read_task = src_db.pool.do(thd_read)
+    write_task = dst_db.pool.do(thd_write)
+
+    await write_task
+    await read_task
 
     rows_queue.join()
 
 
-@defer.inlineCallbacks
-def _copy_database_with_db(src_db, dst_db, print_log):
+async def _copy_database_with_db(src_db, dst_db, print_log):
     # Tables need to be specified in correct order so that tables that other tables depend on are
     # copied first.
     table_names = [
@@ -230,7 +234,7 @@ def _copy_database_with_db(src_db, dst_db, print_log):
 
     for table_name in table_names:
         table = metadata.tables[table_name]
-        yield _copy_single_table(
+        await _copy_single_table(
             src_db, dst_db, table, table_name, buildset_to_parent_buildid, print_log
         )
 
@@ -255,6 +259,6 @@ def _copy_database_with_db(src_db, dst_db, print_log):
                 ],
             )
 
-    yield dst_db.pool.do(thd_write_buildset_parent_buildid)
+    await dst_db.pool.do_with_transaction(thd_write_buildset_parent_buildid)
 
     print_log("Copy complete")
