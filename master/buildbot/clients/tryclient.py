@@ -13,6 +13,8 @@
 #
 # Copyright Buildbot Team Members
 
+from __future__ import annotations
+
 import base64
 import json
 import os
@@ -22,6 +24,7 @@ import shlex
 import string
 import sys
 import time
+from typing import Literal
 
 from twisted.cred import credentials
 from twisted.internet import defer
@@ -40,6 +43,7 @@ from buildbot.util import bytes2unicode
 from buildbot.util import now
 from buildbot.util import unicode2bytes
 from buildbot.util.eventual import fireEventually
+from buildbot.util.twisted import async_to_deferred
 
 
 class SourceStamp:
@@ -732,7 +736,7 @@ class Try(pb.Referenceable):
             return self.deliver_job_pb()
         raise RuntimeError(f"unknown connecttype '{self.connect}', should be 'ssh' or 'pb'")
 
-    def getStatus(self):
+    async def getStatus(self) -> Literal[0, 1] | None:
         # returns a Deferred that fires when the builds have finished, and
         # may emit status messages while we wait
         wait = bool(self.getopt("wait"))
@@ -741,7 +745,7 @@ class Try(pb.Referenceable):
         elif self.connect == "ssh":
             output("waiting for builds with ssh is not supported")
         else:
-            self.running = defer.Deferred()
+            self.running: defer.Deferred[Literal[0, 1]] = defer.Deferred()
             if not self.buildsetStatus:
                 output("try scheduler on the master does not have the builder configured")
                 return None
@@ -749,7 +753,7 @@ class Try(pb.Referenceable):
             self._getStatus_1()  # note that we don't wait for the returned Deferred
             if bool(self.config.get("dryrun")):
                 self.statusDone()
-            return self.running
+            return await self.running
         return None
 
     @defer.inlineCallbacks
@@ -904,33 +908,33 @@ class Try(pb.Referenceable):
             sys.exit(1)
         raise RuntimeError(f"unknown connecttype '{self.connect}', should be 'pb'")
 
-    def announce(self, message):
+    def announce(self, message) -> None:
         if not self.quiet:
             output(message)
 
-    @defer.inlineCallbacks
-    def run_impl(self):
+    @async_to_deferred
+    async def run_impl(self) -> None:
         output(f"using '{self.connect}' connect method")
         self.exitcode = 0
 
         # we can't do spawnProcess until we're inside reactor.run(), so force asynchronous execution
-        yield fireEventually(None)
+        await fireEventually(None)
 
         try:
             if bool(self.config.get("get-builder-names")):
-                yield self.getAvailableBuilderNames()
+                await self.getAvailableBuilderNames()
             else:
-                yield self.createJob()
-                yield self.announce("job created")
+                await self.createJob()
+                self.announce("job created")
                 if bool(self.config.get("dryrun")):
-                    yield self.fakeDeliverJob()
+                    await self.fakeDeliverJob()
                 else:
-                    yield self.deliverJob()
-                yield self.announce("job has been delivered")
-                yield self.getStatus()
+                    await self.deliverJob()
+                self.announce("job has been delivered")
+                await self.getStatus()
 
             if not bool(self.config.get("dryrun")):
-                yield self.cleanup()
+                self.cleanup()
         except SystemExit as e:
             self.exitcode = e.code
         except Exception as e:
@@ -948,6 +952,6 @@ class Try(pb.Referenceable):
         why.trap(SystemExit)
         self.exitcode = why.value.code
 
-    def cleanup(self, res=None):
+    def cleanup(self, res=None) -> None:
         if self.buildsetStatus:
             self.buildsetStatus.broker.transport.loseConnection()

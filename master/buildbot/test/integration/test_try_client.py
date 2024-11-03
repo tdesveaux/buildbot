@@ -13,8 +13,14 @@
 #
 # Copyright Buildbot Team Members
 
+from __future__ import annotations
 
+import inspect
 import os
+from typing import Any
+from typing import Callable
+from typing import Coroutine
+from typing import TypeVar
 from unittest import mock
 
 from twisted.internet import defer
@@ -24,23 +30,36 @@ from twisted.python.filepath import FilePath
 
 from buildbot import util
 from buildbot.clients import tryclient
+from buildbot.master import BuildMaster
 from buildbot.schedulers import trysched
 from buildbot.test.util import www
 from buildbot.test.util.integration import RunMasterBase
+from buildbot.util.twisted import async_to_deferred
+
+_T = TypeVar('_T')
 
 
 # wait for some asynchronous result
-@defer.inlineCallbacks
-def waitFor(fn):
+async def waitFor(fn: Callable[[], defer.Deferred[_T] | Coroutine[Any, Any, _T] | _T]) -> None:
     while True:
-        res = yield fn()
+        call: defer.Deferred[_T] | Coroutine[Any, Any, _T] | _T = fn()
+        if inspect.isawaitable(call) or isinstance(call, defer.Deferred):
+            res = await call
+        else:
+            res = call
+
         if res:
-            return res
-        yield util.asyncSleep(0.01)
+            break
+        await util.asyncSleep(0.01)
 
 
-class Schedulers(RunMasterBase, www.RequiresWwwMixin):
-    def setUp(self):
+class _TrySchedulersBase(RunMasterBase, www.RequiresWwwMixin):
+    output: list[str]
+    serverPort: str
+    master: BuildMaster | None
+    sch: trysched.TryBase | None
+
+    def setUp(self) -> None:
         self.master = None
         self.sch = None
 
@@ -52,6 +71,7 @@ class Schedulers(RunMasterBase, www.RequiresWwwMixin):
             os.rename(tmpfile, newfile)
             log.msg(f"wrote jobfile {newfile}")
             # get the scheduler to poll this directory now
+            assert isinstance(self.sch, trysched.Try_Jobdir)
             d = self.sch.watcher.poll()
             d.addErrback(log.err, 'while polling')
 
@@ -92,9 +112,8 @@ class Schedulers(RunMasterBase, www.RequiresWwwMixin):
             jobdir.child(sub).createDirectory()
         return self.jobdir
 
-    @defer.inlineCallbacks
-    def setup_config(self, extra_config):
-        c = {}
+    async def setup_config(self, extra_config) -> None:
+        c: dict[str, Any] = {}
         from buildbot.config import BuilderConfig
         from buildbot.process import results
         from buildbot.process.buildstep import BuildStep
@@ -119,48 +138,83 @@ class Schedulers(RunMasterBase, www.RequiresWwwMixin):
         # test wants to influence the config, but we still return a new config
         # each time
         c.update(extra_config)
-        yield self.setup_master(c)
+        await self.setup_master(c)
 
-    @defer.inlineCallbacks
-    def startMaster(self, sch):
+    async def startMaster(self, sch: trysched.TryBase) -> None:
+        assert isinstance(sch, trysched.TryBase), f"{type(sch)=}"
         extra_config = {
             'schedulers': [sch],
         }
         self.sch = sch
 
-        yield self.setup_config(extra_config)
+        await self.setup_config(extra_config)
 
         # wait until the scheduler is active
-        yield waitFor(lambda: self.sch.active)
+        await waitFor(lambda: self.sch is not None and self.sch.active)
 
         # and, for Try_Userpass, until it's registered its port
         if isinstance(self.sch, trysched.Try_Userpass):
 
-            def getSchedulerPort():
+            def getSchedulerPort() -> bool:
+                assert self.sch is not None and isinstance(self.sch, trysched.Try_Userpass)
                 if not self.sch.registrations:
-                    return None
+                    return False
                 self.serverPort = self.sch.registrations[0].getPort()
                 log.msg(f"Scheduler registered at port {self.serverPort}")
                 return True
 
-            yield waitFor(getSchedulerPort)
+            await waitFor(getSchedulerPort)
 
-    def runClient(self, config):
+    async def runClient(self, config) -> None:
         self.clt = tryclient.Try(config)
-        return self.clt.run_impl()
+        await self.clt.run_impl()
 
-    @defer.inlineCallbacks
-    def test_userpass_no_wait(self):
-        yield self.startMaster(trysched.Try_Userpass('try', ['a'], 0, [('u', b'p')]))
-        yield self.runClient({
-            'connect': 'pb',
-            'master': f'127.0.0.1:{self.serverPort}',
+    async def _base_run_client(
+        self,
+        run_client_args: dict[str, Any],
+        expected_output: list[str],
+    ) -> list:
+        await self.runClient({
             'username': 'u',
             'passwd': b'p',
+            **run_client_args,
         })
         self.assertEqual(
             self.output,
-            [
+            expected_output,
+        )
+        assert self.master is not None
+        return await self.master.db.buildsets.getBuildsets()
+
+
+class TrySchedulerUserPass(_TrySchedulersBase):
+    async def _base_run_client_userpass(
+        self,
+        run_client_args: dict[str, Any],
+        expected_output: list[str],
+    ) -> list:
+        await self.startMaster(
+            trysched.Try_Userpass(
+                'try',
+                ['a'],
+                0,
+                [('u', b'p')],
+            )
+        )
+        return await self._base_run_client(
+            run_client_args={
+                'connect': 'pb',
+                'master': f'127.0.0.1:{self.serverPort}',
+                **run_client_args,
+            },
+            expected_output=expected_output,
+        )
+
+    @async_to_deferred
+    async def test_userpass_no_wait(self):
+        buildsets = await self._base_run_client_userpass(
+            run_client_args={},
+            expected_output=[
                 "using 'pb' connect method",
                 'job created',
                 'Delivering job; comment= None',
@@ -168,22 +222,14 @@ class Schedulers(RunMasterBase, www.RequiresWwwMixin):
                 'not waiting for builds to finish',
             ],
         )
-        buildsets = yield self.master.db.buildsets.getBuildsets()
         self.assertEqual(len(buildsets), 1)
 
-    @defer.inlineCallbacks
-    def test_userpass_wait(self):
-        yield self.startMaster(trysched.Try_Userpass('try', ['a'], 0, [('u', b'p')]))
-        yield self.runClient({
-            'connect': 'pb',
-            'master': f'127.0.0.1:{self.serverPort}',
-            'username': 'u',
-            'passwd': b'p',
-            'wait': True,
-        })
-        self.assertEqual(
-            self.output,
-            [
+    async def test_userpass_wait(self) -> None:
+        buildsets = await self._base_run_client_userpass(
+            run_client_args={
+                'wait': True,
+            },
+            expected_output=[
                 "using 'pb' connect method",
                 'job created',
                 'Delivering job; comment= None',
@@ -192,24 +238,16 @@ class Schedulers(RunMasterBase, www.RequiresWwwMixin):
                 'a: success (build successful)',
             ],
         )
-        buildsets = yield self.master.db.buildsets.getBuildsets()
         self.assertEqual(len(buildsets), 1)
 
-    @defer.inlineCallbacks
-    def test_userpass_wait_bytes(self):
+    async def test_userpass_wait_bytes(self) -> None:
         self.sourcestamp = tryclient.SourceStamp(branch=b'br', revision=b'rr', patch=(0, b'++--'))
 
-        yield self.startMaster(trysched.Try_Userpass('try', ['a'], 0, [('u', b'p')]))
-        yield self.runClient({
-            'connect': 'pb',
-            'master': f'127.0.0.1:{self.serverPort}',
-            'username': 'u',
-            'passwd': b'p',
-            'wait': True,
-        })
-        self.assertEqual(
-            self.output,
-            [
+        buildsets = await self._base_run_client_userpass(
+            run_client_args={
+                'wait': True,
+            },
+            expected_output=[
                 "using 'pb' connect method",
                 'job created',
                 'Delivering job; comment= None',
@@ -218,23 +256,15 @@ class Schedulers(RunMasterBase, www.RequiresWwwMixin):
                 'a: success (build successful)',
             ],
         )
-        buildsets = yield self.master.db.buildsets.getBuildsets()
         self.assertEqual(len(buildsets), 1)
 
-    @defer.inlineCallbacks
-    def test_userpass_wait_dryrun(self):
-        yield self.startMaster(trysched.Try_Userpass('try', ['a'], 0, [('u', b'p')]))
-        yield self.runClient({
-            'connect': 'pb',
-            'master': f'127.0.0.1:{self.serverPort}',
-            'username': 'u',
-            'passwd': b'p',
-            'wait': True,
-            'dryrun': True,
-        })
-        self.assertEqual(
-            self.output,
-            [
+    async def test_userpass_wait_dryrun(self) -> None:
+        buildsets = await self._base_run_client_userpass(
+            run_client_args={
+                'wait': True,
+                'dryrun': True,
+            },
+            expected_output=[
                 "using 'pb' connect method",
                 'job created',
                 'Job:\n'
@@ -248,73 +278,64 @@ class Schedulers(RunMasterBase, www.RequiresWwwMixin):
                 'All Builds Complete',
             ],
         )
-        buildsets = yield self.master.db.buildsets.getBuildsets()
         self.assertEqual(len(buildsets), 0)
 
-    @defer.inlineCallbacks
-    def test_userpass_list_builders(self):
-        yield self.startMaster(trysched.Try_Userpass('try', ['a'], 0, [('u', b'p')]))
-        yield self.runClient({
-            'connect': 'pb',
-            'get-builder-names': True,
-            'master': f'127.0.0.1:{self.serverPort}',
-            'username': 'u',
-            'passwd': b'p',
-        })
-        self.assertEqual(
-            self.output,
-            [
+    async def test_userpass_list_builders(self) -> None:
+        buildsets = await self._base_run_client_userpass(
+            run_client_args={
+                'get-builder-names': True,
+            },
+            expected_output=[
                 "using 'pb' connect method",
                 'The following builders are available for the try scheduler: ',
                 'a',
             ],
         )
-        buildsets = yield self.master.db.buildsets.getBuildsets()
         self.assertEqual(len(buildsets), 0)
 
-    @defer.inlineCallbacks
-    def test_jobdir_no_wait(self):
+
+class TrySchedulerJobDir(_TrySchedulersBase):
+    async def _base_run_client_jobdir(
+        self,
+        run_client_args: dict[str, Any],
+        expected_output: list[str],
+    ) -> list:
         jobdir = self.setupJobdir()
-        yield self.startMaster(trysched.Try_Jobdir('try', ['a'], jobdir))
-        yield self.runClient({
-            'connect': 'ssh',
-            'master': '127.0.0.1',
-            'username': 'u',
-            'passwd': b'p',
-            'builders': 'a',  # appears to be required for ssh
-        })
-        self.assertEqual(
-            self.output,
-            [
+        await self.startMaster(trysched.Try_Jobdir('try', ['a'], jobdir))
+        return await self._base_run_client(
+            run_client_args={
+                'connect': 'ssh',
+                'master': '127.0.0.1',
+                **run_client_args,
+            },
+            expected_output=expected_output,
+        )
+
+    async def test_jobdir_no_wait(self) -> None:
+        buildsets = await self._base_run_client_jobdir(
+            run_client_args={
+                'builders': 'a',  # appears to be required for ssh
+            },
+            expected_output=[
                 "using 'ssh' connect method",
                 'job created',
                 'job has been delivered',
                 'not waiting for builds to finish',
             ],
         )
-        buildsets = yield self.master.db.buildsets.getBuildsets()
         self.assertEqual(len(buildsets), 1)
 
-    @defer.inlineCallbacks
-    def test_jobdir_wait(self):
-        jobdir = self.setupJobdir()
-        yield self.startMaster(trysched.Try_Jobdir('try', ['a'], jobdir))
-        yield self.runClient({
-            'connect': 'ssh',
-            'wait': True,
-            'host': '127.0.0.1',
-            'username': 'u',
-            'passwd': b'p',
-            'builders': 'a',  # appears to be required for ssh
-        })
-        self.assertEqual(
-            self.output,
-            [
+    async def test_jobdir_wait(self) -> None:
+        buildsets = await self._base_run_client_jobdir(
+            run_client_args={
+                'wait': True,
+                'builders': 'a',  # appears to be required for ssh
+            },
+            expected_output=[
                 "using 'ssh' connect method",
                 'job created',
                 'job has been delivered',
                 'waiting for builds with ssh is not supported',
             ],
         )
-        buildsets = yield self.master.db.buildsets.getBuildsets()
         self.assertEqual(len(buildsets), 1)
