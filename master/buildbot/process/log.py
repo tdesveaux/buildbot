@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Callable
@@ -190,14 +191,9 @@ class StreamLog(Log):
         decoder: Callable[[bytes], str],
     ) -> None:
         super().__init__(step, name, type, logid, decoder)
-        self.lbfs: dict[str, lineboundaries.LineBoundaryFinder] = {}
-
-    def _getLbf(self, stream: str) -> lineboundaries.LineBoundaryFinder:
-        try:
-            return self.lbfs[stream]
-        except KeyError:
-            lbf = self.lbfs[stream] = lineboundaries.LineBoundaryFinder()
-            return lbf
+        self.lbfs: defaultdict[str, lineboundaries.LineBoundaryFinder] = defaultdict(
+            lineboundaries.LineBoundaryFinder
+        )
 
     def _on_whole_lines(self, stream: str, lines: str) -> defer.Deferred[None]:
         # deliver the un-annotated version to subscribers
@@ -207,7 +203,7 @@ class StreamLog(Log):
         return self.addRawLines(self.pat.sub(stream, lines)[:-1])
 
     def split_lines(self, stream: str, text: str) -> defer.Deferred[None]:
-        lbf = self._getLbf(stream)
+        lbf = self.lbfs[stream]
         lines = lbf.append(text)
         if lines is None:
             return defer.succeed(None)
