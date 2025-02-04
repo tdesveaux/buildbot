@@ -17,6 +17,7 @@ import base64
 from unittest import mock
 
 import msgpack
+from autobahn.twisted.websocket import WebSocketServerFactory
 from autobahn.websocket.types import ConnectionDeny
 from parameterized import parameterized
 from twisted.internet import defer
@@ -24,6 +25,7 @@ from twisted.trial import unittest
 
 from buildbot.worker.protocols.manager.msgpack import BuildbotWebSocketServerProtocol
 from buildbot.worker.protocols.manager.msgpack import ConnectioLostError
+from buildbot.worker.protocols.manager.msgpack import Dispatcher
 from buildbot.worker.protocols.manager.msgpack import RemoteWorkerError
 from buildbot.worker.protocols.manager.msgpack import decode_http_authorization_header
 from buildbot.worker.protocols.manager.msgpack import encode_http_authorization_header
@@ -108,7 +110,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
     @defer.inlineCallbacks
     def connect_authenticated_worker(self):
         # worker has to be authenticated before opening the connection
-        pfactory = mock.Mock()
+        pfactory = mock.AsyncMock()
         pfactory.connection = mock.Mock()
 
         self.setup_mock_users({'name': ('pass', pfactory)})
@@ -121,9 +123,10 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.protocol.onOpen()
 
     def setup_mock_users(self, users):
-        self.protocol.factory = mock.Mock()
-        self.protocol.factory.buildbot_dispatcher = mock.Mock()
+        self.protocol.factory = mock.Mock(spec=WebSocketServerFactory)
+        self.protocol.factory.buildbot_dispatcher = mock.Mock(spec=Dispatcher)
         self.protocol.factory.buildbot_dispatcher.users = users
+        self.protocol.factory.buildbot_dispatcher.master.initLock = defer.DeferredLock()
 
     @parameterized.expand([
         ('update_op', {'seq_number': 1}),
@@ -293,7 +296,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_command_map = {command_id: command}
 
         msg = {'op': 'update', 'args': 'args', 'command_id': command_id}
@@ -306,7 +309,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_command_map = {command_id: command}
         self.protocol.command_id_to_reader_map = {}
         self.protocol.command_id_to_writer_map = {}
@@ -321,7 +324,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_command_map = {command_id: command, 2: 'test_command'}
         self.protocol.command_id_to_reader_map = {command_id: 'test_reader', 2: 'test_reader2'}
         self.protocol.command_id_to_writer_map = {command_id: 'test_writer', 2: 'test_writer2'}
@@ -339,7 +342,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg = {'op': 'update_upload_file_write', 'args': 'args', 'command_id': command_id}
@@ -374,7 +377,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg = {
@@ -392,7 +395,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg = {'op': 'update_upload_file_close', 'command_id': command_id}
@@ -416,7 +419,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_reader_map = {command_id: command}
 
         msg = {'op': 'update_read_file', 'length': 1, 'command_id': command_id}
@@ -429,7 +432,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_reader_map = {command_id: command}
 
         msg = {'op': 'update_read_file_close', 'command_id': command_id}
@@ -442,7 +445,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg = {'op': 'update_upload_directory_unpack', 'command_id': command_id}
@@ -455,7 +458,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = 1
 
-        command = mock.Mock()
+        command = mock.AsyncMock()
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg = {'op': 'update_upload_directory_write', 'command_id': command_id, 'args': 'args'}
