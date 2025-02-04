@@ -21,6 +21,7 @@ from typing import Any
 from unittest import mock
 
 import msgpack
+from autobahn.twisted.websocket import WebSocketServerFactory
 from autobahn.websocket.types import ConnectionDeny
 from parameterized import parameterized
 from twisted.internet import defer
@@ -31,6 +32,7 @@ from buildbot.worker.protocols.base import FileWriterImpl
 from buildbot.worker.protocols.base import RemoteCommandImpl
 from buildbot.worker.protocols.manager.msgpack import BuildbotWebSocketServerProtocol
 from buildbot.worker.protocols.manager.msgpack import ConnectioLostError
+from buildbot.worker.protocols.manager.msgpack import Dispatcher
 from buildbot.worker.protocols.manager.msgpack import RemoteWorkerError
 from buildbot.worker.protocols.manager.msgpack import decode_http_authorization_header
 from buildbot.worker.protocols.manager.msgpack import encode_http_authorization_header
@@ -125,7 +127,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
     @defer.inlineCallbacks
     def connect_authenticated_worker(self) -> InlineCallbacksType[None]:
         # worker has to be authenticated before opening the connection
-        pfactory = mock.Mock()
+        pfactory = mock.AsyncMock()
         pfactory.connection = mock.Mock()
 
         self.setup_mock_users({'name': ('pass', pfactory)})
@@ -138,9 +140,10 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.protocol.onOpen()
 
     def setup_mock_users(self, users: dict[str, tuple[str, Mock]]) -> None:
-        self.protocol.factory = mock.Mock()
-        self.protocol.factory.buildbot_dispatcher = mock.Mock()
+        self.protocol.factory = mock.Mock(spec=WebSocketServerFactory)
+        self.protocol.factory.buildbot_dispatcher = mock.Mock(spec=Dispatcher)
         self.protocol.factory.buildbot_dispatcher.users = users
+        self.protocol.factory.buildbot_dispatcher.master.initLock = defer.DeferredLock()
 
     @parameterized.expand([
         ('update_op', {'seq_number': 1}),
@@ -341,7 +344,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = ""
 
-        command = mock.Mock(spec=RemoteCommandImpl)
+        command = mock.AsyncMock(spec=RemoteCommandImpl)
         self.protocol.command_id_to_command_map = {command_id: command}
 
         msg: dict[str, Any] = {'op': 'update', 'args': 'args', 'command_id': command_id}
@@ -354,7 +357,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=RemoteCommandImpl)
+        command = mock.AsyncMock(spec=RemoteCommandImpl)
         self.protocol.command_id_to_command_map = {command_id: command}
         self.protocol.command_id_to_reader_map = {}
         self.protocol.command_id_to_writer_map = {}
@@ -370,7 +373,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         command_id = "1"
         command = mock.Mock(spec=RemoteCommandImpl)
 
-        mock_command = mock.Mock(spec=RemoteCommandImpl)
+        mock_command = mock.AsyncMock(spec=RemoteCommandImpl)
         self.protocol.command_id_to_command_map = {command_id: command, "2": mock_command}
         mock_reader = mock.Mock(spec=FileReaderImpl)
         self.protocol.command_id_to_reader_map = {
@@ -396,7 +399,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=FileWriterImpl)
+        command = mock.AsyncMock(spec=FileWriterImpl)
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg: dict[str, Any] = {
@@ -439,7 +442,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=FileWriterImpl)
+        command = mock.AsyncMock(spec=FileWriterImpl)
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg: dict[str, Any] = {
@@ -457,7 +460,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=FileWriterImpl)
+        command = mock.AsyncMock(spec=FileWriterImpl)
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg: dict[str, Any] = {'op': 'update_upload_file_close', 'command_id': command_id}
@@ -481,7 +484,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=FileReaderImpl)
+        command = mock.AsyncMock(spec=FileReaderImpl)
         self.protocol.command_id_to_reader_map = {command_id: command}
 
         msg: dict[str, Any] = {'op': 'update_read_file', 'length': 1, 'command_id': command_id}
@@ -494,7 +497,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=FileReaderImpl)
+        command = mock.AsyncMock(spec=FileReaderImpl)
         self.protocol.command_id_to_reader_map = {command_id: command}
 
         msg: dict[str, Any] = {'op': 'update_read_file_close', 'command_id': command_id}
@@ -507,7 +510,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=FileWriterImpl)
+        command = mock.AsyncMock(spec=FileWriterImpl)
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg: dict[str, Any] = {'op': 'update_upload_directory_unpack', 'command_id': command_id}
@@ -520,7 +523,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         yield self.connect_authenticated_worker()
         command_id = "1"
 
-        command = mock.Mock(spec=FileWriterImpl)
+        command = mock.AsyncMock(spec=FileWriterImpl)
         self.protocol.command_id_to_writer_map = {command_id: command}
 
         msg: dict[str, Any] = {
