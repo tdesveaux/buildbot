@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -33,6 +34,11 @@ from buildbot.worker.protocols.manager.base import BaseDispatcher
 from buildbot.worker.protocols.manager.base import BaseManager
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
+    from typing import Any
+    from typing import Callable
+    from typing import TypeVar
+
     from autobahn.websocket.types import ConnectionRequest
     from twisted.internet.defer import Deferred
     from twisted.internet.protocol import ServerFactory
@@ -41,6 +47,8 @@ if TYPE_CHECKING:
     from buildbot.worker.protocols.base import FileWriterImpl
     from buildbot.worker.protocols.base import RemoteCommandImpl
     from buildbot.worker.protocols.msgpack import Connection
+
+    _T = TypeVar('_T')
 
 
 class ConnectioLostError(Exception):
@@ -70,6 +78,92 @@ def encode_http_authorization_header(name: bytes, password: bytes) -> str:
     return 'Basic ' + base64.b64encode(userpass).decode()
 
 
+async def _run_with_mapped_command(
+    protocol: BuildbotWebSocketServerProtocol,
+    map: dict[str, _T],
+    func: Callable[
+        [BuildbotWebSocketServerProtocol, _T, dict],
+        Coroutine[Any, Any, None],
+    ],
+    msg: dict,
+) -> None:
+    try:
+        protocol.ensure_msg_keys(msg, 'command_id')
+        command_obj = map.get(msg['command_id'])
+        if command_obj is None:
+            raise KeyError('unknown "command_id"')
+
+        await func(protocol, command_obj, msg)
+    except Exception as e:
+        protocol.send_response_msg(msg, result=str(e), is_exception=True)
+        return
+
+    protocol.send_response_msg(msg, result=None, is_exception=False)
+
+
+def with_command(
+    func: Callable[
+        [BuildbotWebSocketServerProtocol, RemoteCommandImpl, dict],
+        Coroutine[Any, Any, None],
+    ],
+) -> Callable[
+    [BuildbotWebSocketServerProtocol, dict],
+    Coroutine[Any, Any, None],
+]:
+    @functools.wraps(func)
+    async def wrapper_with_command(protocol: BuildbotWebSocketServerProtocol, msg: dict) -> None:
+        await _run_with_mapped_command(
+            protocol,
+            protocol.command_id_to_command_map,
+            func,
+            msg,
+        )
+
+    return wrapper_with_command
+
+
+def with_reader(
+    func: Callable[
+        [BuildbotWebSocketServerProtocol, FileReaderImpl, dict],
+        Coroutine[Any, Any, None],
+    ],
+) -> Callable[
+    [BuildbotWebSocketServerProtocol, dict],
+    Coroutine[Any, Any, None],
+]:
+    @functools.wraps(func)
+    async def wrapper_with_command(protocol: BuildbotWebSocketServerProtocol, msg: dict) -> None:
+        await _run_with_mapped_command(
+            protocol,
+            protocol.command_id_to_reader_map,
+            func,
+            msg,
+        )
+
+    return wrapper_with_command
+
+
+def with_writer(
+    func: Callable[
+        [BuildbotWebSocketServerProtocol, FileWriterImpl, dict],
+        Coroutine[Any, Any, None],
+    ],
+) -> Callable[
+    [BuildbotWebSocketServerProtocol, dict],
+    Coroutine[Any, Any, None],
+]:
+    @functools.wraps(func)
+    async def wrapper_with_command(protocol: BuildbotWebSocketServerProtocol, msg: dict) -> None:
+        await _run_with_mapped_command(
+            protocol,
+            protocol.command_id_to_writer_map,
+            func,
+            msg,
+        )
+
+    return wrapper_with_command
+
+
 class BuildbotWebSocketServerProtocol(WebSocketServerProtocol):
     debug = True
 
@@ -79,6 +173,18 @@ class BuildbotWebSocketServerProtocol(WebSocketServerProtocol):
         self.connection: Connection | None = None
         self.worker_name: str | None = None
         self._deferwaiter = deferwaiter.DeferWaiter()
+
+        self._op_handlers: dict[str, Callable[[dict], defer.Deferred[None]]] = {
+            "update": self.call_update,
+            "update_upload_file_write": self.call_update_upload_file_write,
+            "update_upload_file_close": self.call_update_upload_file_close,
+            "update_upload_file_utime": self.call_update_upload_file_utime,
+            "update_read_file": self.call_update_read_file,
+            "update_read_file_close": self.call_update_read_file_close,
+            "update_upload_directory_unpack": self.call_update_upload_directory_unpack,
+            "update_upload_directory_write": self.call_update_upload_directory_write,
+            "complete": self.call_complete,
+        }
 
     def get_dispatcher(self) -> Dispatcher:
         # This is an instance of class msgpack.Dispatcher set in Dispatcher.__init__().
@@ -104,7 +210,7 @@ class BuildbotWebSocketServerProtocol(WebSocketServerProtocol):
         if self.debug:
             log.msg("MASTER -> WORKER message: ", message)
 
-    def contains_msg_key(self, msg: dict[str, Any], keys: tuple[str, ...]) -> None:
+    def ensure_msg_keys(self, msg: dict[str, Any], *keys: str) -> None:
         for k in keys:
             if k not in msg:
                 raise KeyError(f'message did not contain obligatory "{k}" key')
@@ -125,164 +231,64 @@ class BuildbotWebSocketServerProtocol(WebSocketServerProtocol):
             self.sendClose()
 
     @async_to_deferred
-    async def call_update(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id', 'args'))
-
-            if msg['command_id'] not in self.command_id_to_command_map:
-                raise KeyError('unknown "command_id"')
-
-            command = self.command_id_to_command_map[msg['command_id']]
-            await any_to_async(command.remote_update_msgpack(msg['args']))
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-
-        self.send_response_msg(msg, result, is_exception)
+    @with_command
+    async def call_update(self, command: RemoteCommandImpl, msg: dict) -> None:
+        self.ensure_msg_keys(msg, 'args')
+        await any_to_async(command.remote_update_msgpack(msg['args']))
 
     @async_to_deferred
-    async def call_complete(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id', 'args'))
+    @with_command
+    async def call_complete(self, command: RemoteCommandImpl, msg: dict) -> None:
+        self.ensure_msg_keys(msg, 'args')
+        await any_to_async(command.remote_complete(msg['args']))
 
-            if msg['command_id'] not in self.command_id_to_command_map:
-                raise KeyError('unknown "command_id"')
-            command = self.command_id_to_command_map[msg['command_id']]
-            await any_to_async(command.remote_complete(msg['args']))
-
-            if msg['command_id'] in self.command_id_to_command_map:
-                del self.command_id_to_command_map[msg['command_id']]
-            if msg['command_id'] in self.command_id_to_reader_map:
-                del self.command_id_to_reader_map[msg['command_id']]
-            if msg['command_id'] in self.command_id_to_writer_map:
-                del self.command_id_to_writer_map[msg['command_id']]
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+        command_id = msg['command_id']
+        self.command_id_to_command_map.pop(command_id)
+        self.command_id_to_reader_map.pop(command_id, None)
+        self.command_id_to_writer_map.pop(command_id, None)
 
     @async_to_deferred
-    async def call_update_upload_file_write(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id', 'args'))
-
-            if msg['command_id'] not in self.command_id_to_writer_map:
-                raise KeyError('unknown "command_id"')
-
-            file_writer = self.command_id_to_writer_map[msg['command_id']]
-            await any_to_async(file_writer.remote_write(msg['args']))
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+    @with_writer
+    async def call_update_upload_file_write(self, file_writer: FileWriterImpl, msg: dict) -> None:
+        self.ensure_msg_keys(msg, 'args')
+        await any_to_async(file_writer.remote_write(msg['args']))
 
     @async_to_deferred
-    async def call_update_upload_file_utime(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id', 'access_time', 'modified_time'))
-
-            if msg['command_id'] not in self.command_id_to_writer_map:
-                raise KeyError('unknown "command_id"')
-
-            file_writer = self.command_id_to_writer_map[msg['command_id']]
-            await any_to_async(file_writer.remote_utime((msg['access_time'], msg['modified_time'])))
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+    @with_writer
+    async def call_update_upload_file_utime(self, file_writer: FileWriterImpl, msg: dict) -> None:
+        self.ensure_msg_keys(msg, 'access_time', 'modified_time')
+        await any_to_async(file_writer.remote_utime('access_time', 'modified_time'))
 
     @async_to_deferred
-    async def call_update_upload_file_close(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id',))
-
-            if msg['command_id'] not in self.command_id_to_writer_map:
-                raise KeyError('unknown "command_id"')
-
-            file_writer = self.command_id_to_writer_map[msg['command_id']]
-            await any_to_async(file_writer.remote_close())
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+    @with_writer
+    async def call_update_upload_file_close(self, file_writer: FileWriterImpl, msg: dict) -> None:
+        await any_to_async(file_writer.remote_close())
 
     @async_to_deferred
-    async def call_update_read_file(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id', 'length'))
-
-            if msg['command_id'] not in self.command_id_to_reader_map:
-                raise KeyError('unknown "command_id"')
-
-            file_reader = self.command_id_to_reader_map[msg['command_id']]
-            await any_to_async(file_reader.remote_read(msg['length']))
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+    @with_reader
+    async def call_update_read_file(self, file_reader: FileReaderImpl, msg: dict) -> None:
+        self.ensure_msg_keys(msg, 'length')
+        await any_to_async(file_reader.remote_read(msg['length']))
 
     @async_to_deferred
-    async def call_update_read_file_close(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id',))
-
-            if msg['command_id'] not in self.command_id_to_reader_map:
-                raise KeyError('unknown "command_id"')
-
-            file_reader = self.command_id_to_reader_map[msg['command_id']]
-            await any_to_async(file_reader.remote_close())
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+    @with_reader
+    async def call_update_read_file_close(self, file_reader: FileReaderImpl, msg: dict) -> None:
+        await any_to_async(file_reader.remote_close())
 
     @async_to_deferred
-    async def call_update_upload_directory_unpack(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id',))
-
-            if msg['command_id'] not in self.command_id_to_writer_map:
-                raise KeyError('unknown "command_id"')
-
-            directory_writer = self.command_id_to_writer_map[msg['command_id']]
-            await any_to_async(directory_writer.remote_unpack())
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+    @with_writer
+    async def call_update_upload_directory_unpack(
+        self, directory_writer: FileWriterImpl, msg: dict
+    ) -> None:
+        await any_to_async(directory_writer.remote_unpack())
 
     @async_to_deferred
-    async def call_update_upload_directory_write(self, msg: dict[str, Any]) -> None:
-        result = None
-        is_exception = False
-        try:
-            self.contains_msg_key(msg, ('command_id', 'args'))
-
-            if msg['command_id'] not in self.command_id_to_writer_map:
-                raise KeyError('unknown "command_id"')
-
-            directory_writer = self.command_id_to_writer_map[msg['command_id']]
-            await any_to_async(directory_writer.remote_write(msg['args']))
-        except Exception as e:
-            is_exception = True
-            result = str(e)
-        self.send_response_msg(msg, result, is_exception)
+    @with_writer
+    async def call_update_upload_directory_write(
+        self, directory_writer: FileWriterImpl, msg: dict
+    ) -> None:
+        self.ensure_msg_keys(msg, 'args')
+        await any_to_async(directory_writer.remote_write(msg['args']))
 
     def send_response_msg(
         self,
@@ -312,38 +318,25 @@ class BuildbotWebSocketServerProtocol(WebSocketServerProtocol):
             log.msg(f'Invalid message from worker: {msg}')
             return
 
-        if msg['op'] != "response" and self.connection is None:
+        msg_op = msg['op']
+
+        if msg_op != "response" and self.connection is None:
             self.send_response_msg(msg, "Worker not authenticated.", is_exception=True)
             return
 
-        if msg['op'] == "update":
-            self._deferwaiter.add(self.call_update(msg))
-        elif msg['op'] == "update_upload_file_write":
-            self._deferwaiter.add(self.call_update_upload_file_write(msg))
-        elif msg['op'] == "update_upload_file_close":
-            self._deferwaiter.add(self.call_update_upload_file_close(msg))
-        elif msg['op'] == "update_upload_file_utime":
-            self._deferwaiter.add(self.call_update_upload_file_utime(msg))
-        elif msg['op'] == "update_read_file":
-            self._deferwaiter.add(self.call_update_read_file(msg))
-        elif msg['op'] == "update_read_file_close":
-            self._deferwaiter.add(self.call_update_read_file_close(msg))
-        elif msg['op'] == "update_upload_directory_unpack":
-            self._deferwaiter.add(self.call_update_upload_directory_unpack(msg))
-        elif msg['op'] == "update_upload_directory_write":
-            self._deferwaiter.add(self.call_update_upload_directory_write(msg))
-        elif msg['op'] == "complete":
-            self._deferwaiter.add(self.call_complete(msg))
-        elif msg['op'] == "response":
+        msg_handler = self._op_handlers.get(msg_op)
+        if msg_handler is not None:
+            self._deferwaiter.add(msg_handler(msg))
+        elif msg_op == "response":
             seq_number = msg['seq_number']
-            if "is_exception" in msg:
-                self.seq_num_to_waiters_map[seq_number].errback(RemoteWorkerError(msg['result']))
-            else:
-                self.seq_num_to_waiters_map[seq_number].callback(msg['result'])
             # stop waiting for a response of this command
-            del self.seq_num_to_waiters_map[seq_number]
+            waiter = self.seq_num_to_waiters_map.pop(seq_number)
+            if "is_exception" in msg:
+                waiter.errback(RemoteWorkerError(msg['result']))
+            else:
+                waiter.callback(msg['result'])
         else:
-            self.send_response_msg(msg, f"Command {msg['op']} does not exist.", is_exception=True)
+            self.send_response_msg(msg, f"Command {msg_op} does not exist.", is_exception=True)
 
     @async_to_deferred
     async def get_message_result(self, msg: dict[str, Any]) -> Any:
