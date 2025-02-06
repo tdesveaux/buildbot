@@ -128,6 +128,11 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
         self.protocol.factory.buildbot_dispatcher.users = users
         self.protocol.factory.buildbot_dispatcher.master.initLock = defer.DeferredLock()
 
+    def setup_command_id(self, command_id) -> None:
+        self.protocol.command_id_to_command_map[command_id] = mock.AsyncMock()
+        self.protocol.command_id_to_reader_map[command_id] = mock.AsyncMock()
+        self.protocol.command_id_to_writer_map[command_id] = mock.AsyncMock()
+
     @parameterized.expand([
         ('update_op', {'seq_number': 1}),
         ('update_seq_number', {'op': 'update'}),
@@ -231,6 +236,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
     @defer.inlineCallbacks
     def test_missing_args(self, command, msg):
         yield self.connect_authenticated_worker()
+        self.setup_command_id(msg['command_id'])
         expected = {
             'op': 'response',
             'result': '\'message did not contain obligatory "args" key\'',
@@ -353,6 +359,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
     @defer.inlineCallbacks
     def test_update_upload_file_utime_missing_access_time(self):
         yield self.connect_authenticated_worker()
+        self.setup_command_id(2)
         msg = {'op': 'update_upload_file_utime', 'modified_time': 2, 'command_id': 2}
         expected = {
             'op': 'response',
@@ -364,6 +371,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
     @defer.inlineCallbacks
     def test_update_upload_file_utime_missing_modified_time(self):
         yield self.connect_authenticated_worker()
+        self.setup_command_id(2)
         msg = {'op': 'update_upload_file_utime', 'access_time': 1, 'command_id': 2}
         expected = {
             'op': 'response',
@@ -406,6 +414,7 @@ class TestBuildbotWebSocketServerProtocol(unittest.TestCase):
     @defer.inlineCallbacks
     def test_update_read_file_missing_length(self):
         yield self.connect_authenticated_worker()
+        self.setup_command_id(1)
         msg = {'op': 'update_read_file', 'command_id': 1}
         expected = {
             'op': 'response',
