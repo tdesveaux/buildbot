@@ -312,7 +312,8 @@ class BuildbotWebSocketServerProtocol(WebSocketServerProtocol):
             return
 
         msg = msgpack.unpackb(payload, raw=False)
-        self.maybe_log_worker_to_master_msg(msg)
+        if msg.get('op') != 'update':
+            self.maybe_log_worker_to_master_msg(msg)
 
         if 'seq_number' not in msg or 'op' not in msg:
             log.msg(f'Invalid message from worker: {msg}')
@@ -358,10 +359,11 @@ class BuildbotWebSocketServerProtocol(WebSocketServerProtocol):
     @async_to_deferred
     async def onConnect(self, request: ConnectionRequest) -> None:
         if self.debug:
-            log.msg(f"Client connecting: {request.peer}")
+            log.msg(f"Client connecting: {request.peer}, {request.headers=}")
 
         value = request.headers.get('authorization')
         if value is None:
+            log.msg("[BuildbotWebSocketServerProtocol] ConnectionDeny!")
             raise ConnectionDeny(401, "Unauthorized")
 
         try:
