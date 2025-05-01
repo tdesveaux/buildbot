@@ -16,7 +16,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from collections.abc import Sequence
 from copy import deepcopy
+from functools import partial
 from functools import reduce
 from typing import TYPE_CHECKING
 from typing import Any
@@ -25,6 +27,7 @@ from typing import cast
 
 from twisted.internet import defer
 from twisted.internet import error
+from twisted.logger import Logger
 from twisted.python import failure
 from twisted.python import log
 from twisted.python.failure import Failure
@@ -49,6 +52,8 @@ from buildbot.reporters.utils import getURLForBuild
 from buildbot.util import Notifier
 from buildbot.util import bytes2unicode
 from buildbot.util.eventual import eventually
+from buildbot.util.twisted import any_to_async
+from buildbot.util.twisted import async_to_deferred
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -67,6 +72,7 @@ if TYPE_CHECKING:
     from buildbot.process.buildrequest import BuildRequest
     from buildbot.process.buildrequest import TempChange
     from buildbot.process.buildrequest import TempSourceStamp
+    from buildbot.process.log import Log
     from buildbot.process.properties import Properties
     from buildbot.process.workerforbuilder import AbstractWorkerForBuilder
     from buildbot.process.workerforbuilder import WorkerForBuilder
@@ -104,8 +110,6 @@ class Build(properties.PropertiesMixin):
     results: int | None = None
     stopped = False
     set_runtime_properties = True
-
-    POST_RUN_STEP_NAME = "post-run"
 
     class Sentinel:
         pass
@@ -687,10 +691,21 @@ class Build(properties.PropertiesMixin):
 
         return None
 
+    def _get_post_run_step(self) -> _PostRunStep | None:
+        if self.currentStep is None or isinstance(self.currentStep, _PostRunStep):
+            # Either:
+            #   - the build did not execute any step (thus, nothing to clean)
+            #   - the post run step was already added and executed
+            return None
+        return _PostRunStep(self.executedSteps)
+
     def startNextStep(self) -> Deferred[None]:
         next_step = self.getNextStep()
         if next_step is None:
-            return defer.Deferred.fromCoroutine(self.execute_steps_post_run())
+            next_step = self._get_post_run_step()
+            if next_step is None:
+                return self.allStepsDone()
+
         self.executedSteps.append(next_step)
         self.currentStep = next_step
 
@@ -757,27 +772,6 @@ class Build(properties.PropertiesMixin):
             self.results = RETRY
             terminate = True
         return terminate
-
-    async def execute_steps_post_run(self) -> None:
-        # for all executed steps
-        cleanup_step = self.setupBuildSteps([buildstep.BuildStep(name=self.POST_RUN_STEP_NAME)])[0]
-
-        for step in reversed(self.executedSteps):
-            # lost connection to worker. Abort
-            if not self.conn:
-                break
-
-            try:
-                await step.post_run()
-            except Exception:
-                log.err(
-                    None,
-                    f"Build {self} cleanup of step {step.name}",
-                )
-
-        self.steps.append(cleanup_step)
-
-        return await self.allStepsDone()
 
     def lostRemote(self, conn: None = None) -> None:
         # the worker went away. There are several possible reasons for this,
@@ -993,3 +987,60 @@ class Build(properties.PropertiesMixin):
 
     def getWorkerInfo(self) -> Properties:
         return self.worker_info
+
+
+class _PostRunStep(buildstep.BuildStep):
+    """
+    Special step for Build to run at the end,
+    calling the `BuildStep.post_run` for executed steps,
+    handling the produced logs.
+    """
+
+    name = "post-run"
+
+    alwaysRun: bool = True
+
+    logger = Logger(namespace="buildbot._PostRunStep")
+
+    def __init__(self, executed_steps: Sequence[buildstep.BuildStep]) -> None:
+        super().__init__(hideStepIf=self._hide_step_if)
+
+        self.executed_steps = executed_steps[:]  # copy
+
+    def _hide_step_if(self, results: int, _self: buildstep.BuildStep) -> bool:
+        return results == SUCCESS and not bool(self.logs)
+
+    async def register_log(self, step: buildstep.BuildStep, log: Log) -> None:
+        assert self.master is not None
+        assert self.stepid is not None
+
+        log_name = f"{step.name}-{log.getName()}"
+
+        await any_to_async(
+            self.master.data.updates.addLog(
+                self.stepid,
+                log_name,
+                log.type,
+            )
+        )
+        self.logs[log_name] = log
+
+    @async_to_deferred
+    async def run(self) -> int:
+        assert self.build is not None
+
+        result = SUCCESS
+        for step in reversed(self.executed_steps):
+            try:
+                # NOTE(tdesveaux): TBD, return result?
+                await step.post_run(add_log=partial(self.register_log, step=step))
+            except Exception as exc:
+                result = WARNINGS  # NOTE(tdesveaux): FAILURE/EXCEPTION?
+                self.logger.error(
+                    "[{self.build!r}][{step!r}] PostRun",
+                    self=self,
+                    step=step,
+                    log_failure=Failure(exc_value=exc),
+                )
+
+        return result

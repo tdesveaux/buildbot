@@ -17,10 +17,13 @@ from __future__ import annotations
 
 import inspect
 import sys
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Callable
 from typing import ClassVar
+from typing import Self
+from typing import TypeVar
 from typing import cast
 
 from twisted.internet import defer
@@ -68,6 +71,7 @@ from buildbot.util import flatten
 from buildbot.util.test_result_submitter import TestResultSubmitter
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
     from collections.abc import Sequence
     from typing import TypeVar
 
@@ -924,7 +928,7 @@ class BuildStep(
     def setStatistic(self, name: str, value: int) -> None:
         self.statistics[name] = value
 
-    async def post_run(self) -> None:
+    async def post_run(self, add_log: Callable[[plog.Log], Coroutine[Any, Any, None]]) -> None:
         pass
 
 
