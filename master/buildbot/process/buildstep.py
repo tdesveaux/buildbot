@@ -21,7 +21,10 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import Callable
 from typing import ClassVar
+from typing import Coroutine
+from typing import Self
 from typing import Sequence
+from typing import TypeVar
 from typing import cast
 
 from twisted.internet import defer
@@ -924,7 +927,7 @@ class BuildStep(
     def setStatistic(self, name: str, value: int) -> None:
         self.statistics[name] = value
 
-    async def post_run(self) -> None:
+    async def post_run(self, add_log: Callable[[plog.Log], Coroutine[Any, Any, None]]) -> None:
         pass
 
 

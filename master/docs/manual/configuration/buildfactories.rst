@@ -173,11 +173,21 @@ For example, you could have a step that create a temporary Python Virtual Enviro
 
         @defer.inlineCallbacks
         def run(self):
-            venv_path = yield defer.Deferred.fromCoroutine(self.create_venv())
-            if venv_path is not None:
-                self.build.add_cleanup_steps([steps.RemoveDirectory(dir=venv_path)])
+            self.venv_path = yield defer.Deferred.fromCoroutine(self.create_venv())
+
+            ...
 
             return result
+
+        async def post_run(self) -> None:
+            cmd = remotecommand.RemoteCommand(
+                'rmdir',
+                {'dir': self.venv_path},
+            )
+            cmd.useLog(self.stdio_log, False)
+            await self.runCommand(cmd)
+            if cmd.results() == FAILURE:
+                
 
     f = util.BuildFactory()
     f.addStep(CreatePythonVirtualEnv())
