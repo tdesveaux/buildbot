@@ -1,0 +1,45 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directories:
+      - "e2e/"
+      - "www/**"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "**/*"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directories:
+      - ".github/**/*"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
