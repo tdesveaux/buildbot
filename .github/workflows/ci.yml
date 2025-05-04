@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-    - master
+    - main
   pull_request:
 
 permissions:
@@ -10,13 +10,17 @@ permissions:
 
 jobs:
   win:
-    name: Win / python ${{ matrix.python-version }}
-    runs-on: windows-2019
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    name: ${{ matrix.os }} / python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
 
     env:
       # Needed to ignore specific warns, otherwise, it'll warn a generic message
@@ -44,6 +48,10 @@ jobs:
           python -m pip install -r requirements-pip.txt
           python -m pip install -r requirements-ci.txt
           python -m pip list
+
+      - name: "Check PyWin32"
+        if: ${{ matrix.os=='windows-latest' }}
+        run: |
           # Check that pywin32 is properly installed
           python -c "import win32api"
 
