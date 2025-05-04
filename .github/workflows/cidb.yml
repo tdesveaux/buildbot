@@ -2,7 +2,7 @@ name: CI (DB)
 on:
   push:
     branches:
-    - master
+    - main
     - release
   workflow_dispatch:
     inputs:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - name: MariaDB Server latest
@@ -101,8 +101,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         if: ${{ github.event_name != 'workflow_dispatch' }}
-
-      - run: sudo apt-get install aspell aspell-en iamerican ispell
 
       - name: Set up Python
         uses: actions/setup-python@v5
