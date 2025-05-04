@@ -4,6 +4,7 @@ on:
     branches:
     - master
     - release
+    - ci-tests/typing/buildbot_worker
 
 permissions:
   contents: read
@@ -11,7 +12,7 @@ permissions:
 jobs:
   db:
     name: DB / ${{ matrix.name }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
@@ -26,7 +27,7 @@ jobs:
             database: mariadb:lts
             connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest?storage_engine=InnoDB'
             check: healthcheck.sh --connect --innodb_initialized
-            
+
           - name: MySQL 5
             database: mysql:5
             connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest?storage_engine=InnoDB'
@@ -68,7 +69,7 @@ jobs:
         env:
           MARIADB_USER: buildbot
           MARIADB_PASSWORD: buildbot
-          MARIADB_DATABASE: bbtest     
+          MARIADB_DATABASE: bbtest
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 1
           MYSQL_USER: buildbot
           MYSQL_PASSWORD: buildbot
@@ -85,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: sudo apt-get install aspell aspell-en enchant iamerican ispell
+      # - run: sudo apt-get install aspell aspell-en enchant iamerican ispell
 
       - name: Set up Python
         uses: actions/setup-python@v5
