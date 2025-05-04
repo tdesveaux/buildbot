@@ -20,7 +20,7 @@ PyHamcrest==2.1.0
 psutil==6.1.0
 pycparser==2.21;  python_version < "3.8" # pyup: ignore
 pycparser==2.22;  python_version >= "3.8"
-six==1.16.0
+six==1.17.0
 Twisted==23.8.0;  python_version < "3.8" # pyup: ignore
 Twisted==24.11.0;  python_version >= "3.8"
 txaio==23.1.1
