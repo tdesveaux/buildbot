@@ -126,13 +126,13 @@ class RemoteUserAuth(AuthBase):
             from twisted.web.resource import ForbiddenResource
 
             return cast(
-                resource.Resource,
+                'resource.Resource',
                 ForbiddenResource(message="URL is not supported for authentication"),
             )
 
         from twisted.web.pages import forbidden
 
-        return cast(resource.Resource, forbidden(message="URL is not supported for authentication"))
+        return cast('resource.Resource', forbidden(message="URL is not supported for authentication"))
 
     @defer.inlineCallbacks
     def maybeAutoLogin(self, request: Any) -> InlineCallbacksType[None]:
@@ -180,7 +180,7 @@ class TwistedICredAuthBase(AuthBase):
 
     def getLoginResource(self) -> resource.Resource:
         return cast(
-            resource.Resource,
+            'resource.Resource',
             HTTPAuthSessionWrapper(
                 Portal(AuthRealm(self.master, self), self.checkers), self.credentialFactories
             ),

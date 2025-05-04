@@ -103,7 +103,7 @@ class Codebase(interfaces.InterfaceTests, TestReactorMixin, unittest.TestCase):
     async def setUp(self) -> None:  # type: ignore[override]
         self.setup_test_reactor()
         self.master = await fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
-        self.rtype = codebases.Codebase(cast(BuildMaster, self.master))
+        self.rtype = codebases.Codebase(cast('BuildMaster', self.master))
         await self.master.db.insert_test_data([
             fakedb.Project(id=7, name='fake_project7'),
             fakedb.Project(id=8, name='fake_project8'),

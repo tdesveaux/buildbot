@@ -403,7 +403,7 @@ class TestOptions(misc.StdoutAssertionsMixin, unittest.TestCase):
         self.patch(log, 'startLogging', mock.Mock())
         with self.assertRaises(usage.UsageError):
             self.parse("--verbose")
-        cast(mock.Mock, log.startLogging).assert_called_once_with(sys.stderr)
+        cast("mock.Mock", log.startLogging).assert_called_once_with(sys.stderr)
 
 
 # used by TestRun.test_run_good to patch in a callback

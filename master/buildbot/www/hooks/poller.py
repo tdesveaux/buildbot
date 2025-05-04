@@ -34,7 +34,7 @@ from buildbot.www.service import BuildbotSite
 
 class PollingHandler(BaseHookHandler):
     def getChanges(self, req: Request) -> defer.Deferred[tuple[list[dict[str, Any]], str | None]]:
-        site = cast(BuildbotSite, req.site)
+        site = cast("BuildbotSite", req.site)
         assert site.master is not None
         change_svc = site.master.change_svc
         assert req.args is not None

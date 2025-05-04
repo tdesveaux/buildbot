@@ -114,7 +114,7 @@ class CodebaseBranchTests(interfaces.InterfaceTests, TestReactorMixin, unittest.
     async def setUp(self) -> None:  # type: ignore[override]
         self.setup_test_reactor()
         self.master = await fakemaster.make_master(self, wantMq=True, wantDb=True, wantData=True)
-        self.rtype = codebase_branches.CodebaseBranch(cast(BuildMaster, self.master))
+        self.rtype = codebase_branches.CodebaseBranch(cast('BuildMaster', self.master))
         await self.master.db.insert_test_data([
             fakedb.Project(id=7, name='fake_project7'),
             fakedb.Codebase(id=13, projectid=7, name='codebase1'),
