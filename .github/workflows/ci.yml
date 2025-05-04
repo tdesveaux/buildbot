@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-    - master
+    - main
   pull_request:
 
 permissions:
@@ -16,7 +16,7 @@ env:
 jobs:
   lint:
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - python-version: "3.9"
@@ -241,7 +241,7 @@ jobs:
     needs:
       - lint
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         python-version:
           - "3.9"
