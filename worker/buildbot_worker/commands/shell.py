@@ -12,6 +12,9 @@
 # Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Copyright Buildbot Team Members
+from __future__ import annotations
+
+from twisted.internet.defer import Deferred
 
 from buildbot_worker import runprocess
 from buildbot_worker.commands import base
@@ -20,7 +23,7 @@ from buildbot_worker.commands import base
 class WorkerShellCommand(base.Command):
     requiredArgs = ['workdir', 'command']
 
-    def start(self):
+    def start(self) -> Deferred[None]:
         args = self.args
         workdir = args['workdir']
 
@@ -50,12 +53,12 @@ class WorkerShellCommand(base.Command):
         d = self.command.start()
         return d
 
-    def interrupt(self):
+    def interrupt(self) -> None:
         self.interrupted = True
         self.command.kill("command interrupted")
 
-    def writeStdin(self, data):
-        self.command.writeStdin(data)
+    def writeStdin(self, data: bytes) -> None:
+        self.command.writeStdin(data)  # type: ignore[attr-defined]
 
-    def closeStdin(self):
-        self.command.closeStdin()
+    def closeStdin(self) -> None:
+        self.command.closeStdin()  # type: ignore[attr-defined]
