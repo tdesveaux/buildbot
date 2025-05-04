@@ -109,7 +109,7 @@ run_tests() {
         warning "please provide a TRIALTMP env variable pointing to a ramfs for 30x speed up of the integration tests"
     fi
     find . -name \*.pyc -exec rm {} \;
-    trial --reporter text ${TEMP_DIRECTORY_OPT} ${TEST}
+    trial --jobs=auto --reporter text ${TEMP_DIRECTORY_OPT} ${TEST}
 }
 
 if ! git diff --no-ext-diff --quiet --exit-code; then

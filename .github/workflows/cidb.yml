@@ -68,7 +68,7 @@ jobs:
         env:
           MARIADB_USER: buildbot
           MARIADB_PASSWORD: buildbot
-          MARIADB_DATABASE: bbtest     
+          MARIADB_DATABASE: bbtest
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 1
           MYSQL_USER: buildbot
           MYSQL_PASSWORD: buildbot
@@ -85,8 +85,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: sudo apt-get install aspell aspell-en iamerican ispell
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -101,4 +99,4 @@ jobs:
 
       - run: pip install -r requirements-pip.txt
       - run: pip install -r requirements-ci.txt -r requirements-cidb.txt
-      - run: $(which trial) --reporter=text --rterrors buildbot.test buildbot_worker.test
+      - run: $(which trial) --jobs=auto --reporter=text --rterrors buildbot.test buildbot_worker.test
