@@ -1,0 +1,53 @@
+name: Build release artifacts
+on:
+  release:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Needed to ignore specific warns, otherwise, it'll warn a generic message
+  SQLALCHEMY_WARN_20: 1
+
+
+jobs:
+  build-worker-bin:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+        - os: ubuntu-latest
+          name: linux
+          ext: bin
+        # - os: windows-latest
+        #   name: windows
+        #   ext: exe
+
+    runs-on: ${{ matrix.os }}
+    env:
+      WORKER_BIN_NAME: buildbot-worker-${{ matrix.os }}-${GITHUB_REF#refs/*/NONE}.${{ matrix.ext }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements-pip.txt
+            requirements-ci.txt
+            worker/setup.py
+      - run: python -m pip install -r requirements-pip.txt
+      - run: python -m pip install -r requirements-ci.txt
+      - run: python -m pip install pyinstaller==6.9.0
+      - run: pyinstaller pyinstaller/buildbot-worker.spec
+      - run: trial --reporter=text --rterrors buildbot.test.integration.interop
+        env:
+          SANDBOXED_WORKER_PATH: ./dist/buildbot-worker
+      - run: mv dist/buildbot-worker "dist/${{ env.WORKER_BIN_NAME }}"
+      - name: upload worker bin
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildbot-worker-bin-${{ matrix.os }}
+          path: "./dist/${{ env.WORKER_BIN_NAME }}"
