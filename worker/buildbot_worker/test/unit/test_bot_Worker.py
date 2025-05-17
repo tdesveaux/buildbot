@@ -217,7 +217,7 @@ class TestWorker(unittest.TestCase):
             keepaliveTimeout=10,
             unicode_encoding='utf8',
             protocol='pb',
-            allow_shutdown=True,  # type: ignore[arg-type]
+            allow_shutdown=None,
         )
 
     def test_worker_print(self) -> defer.Deferred[None]:
@@ -357,7 +357,8 @@ class TestWorker(unittest.TestCase):
         )
 
         # Mock out gracefulShutdown
-        worker.gracefulShutdown = Mock()  # type: ignore[method-assign]
+        gracefull_shutdown_mock = Mock()
+        self.patch(worker, "gracefulShutdown", gracefull_shutdown_mock)
 
         # Mock out os.path methods
         exists = Mock()
@@ -373,7 +374,7 @@ class TestWorker(unittest.TestCase):
         worker._checkShutdownFile()
 
         # We shouldn't have called gracefulShutdown
-        self.assertEqual(worker.gracefulShutdown.call_count, 0)
+        self.assertEqual(gracefull_shutdown_mock.call_count, 0)
 
         # Pretend that the file exists now, with an mtime of 2
         exists.return_value = True
@@ -381,13 +382,13 @@ class TestWorker(unittest.TestCase):
         worker._checkShutdownFile()
 
         # Now we should have changed gracefulShutdown
-        self.assertEqual(worker.gracefulShutdown.call_count, 1)
+        self.assertEqual(gracefull_shutdown_mock.call_count, 1)
 
         # Bump the mtime again, and make sure we call shutdown again
         mtime.return_value = 3
         worker._checkShutdownFile()
-        self.assertEqual(worker.gracefulShutdown.call_count, 2)
+        self.assertEqual(gracefull_shutdown_mock.call_count, 2)
 
         # Try again, we shouldn't call shutdown another time
         worker._checkShutdownFile()
-        self.assertEqual(worker.gracefulShutdown.call_count, 2)
+        self.assertEqual(gracefull_shutdown_mock.call_count, 2)
