@@ -59,9 +59,3 @@ class WorkerShellCommand(base.Command):
     def interrupt(self) -> None:
         self.interrupted = True
         self.command.kill("command interrupted")
-
-    def writeStdin(self, data: bytes) -> None:
-        self.command.writeStdin(data)  # type: ignore[attr-defined]
-
-    def closeStdin(self) -> None:
-        self.command.closeStdin()  # type: ignore[attr-defined]
