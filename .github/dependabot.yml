@@ -3,8 +3,7 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "cron"
-      cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+      interval: "daily"
     groups:
       minor-upgrades:
         update-types:
@@ -16,8 +15,7 @@ updates:
       - "e2e/"
       - "www/**"
     schedule:
-      interval: "cron"
-      cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+      interval: "daily"
     groups:
       minor-upgrades:
         update-types:
@@ -28,8 +26,7 @@ updates:
     directories:
       - "**/*"
     schedule:
-      interval: "cron"
-      cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+      interval: "daily"
     groups:
       minor-upgrades:
         update-types:
@@ -39,8 +36,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "cron"
-      cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+      interval: "daily"
     groups:
       minor-upgrades:
         update-types:
