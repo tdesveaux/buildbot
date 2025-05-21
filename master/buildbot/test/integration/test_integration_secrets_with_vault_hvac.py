@@ -64,7 +64,7 @@ class TestVaultHvac(RunMasterBase):
 
     def start_container(self, image_tag):
         try:
-            image = f'vault:{image_tag}'
+            image = f'hashicorp/vault:{image_tag}'
             subprocess.check_call(['docker', 'pull', image], stdout=subprocess.DEVNULL)
 
             subprocess.check_call(
@@ -157,9 +157,7 @@ class TestVaultHvac(RunMasterBase):
         self.assertTrue(res)
 
     all_tags = [
-        ('1.9.7',),
-        ('1.10.5',),
-        ('1.11.1',),
+        ('1.19.4',),
     ]
 
     @parameterized.expand(all_tags)
