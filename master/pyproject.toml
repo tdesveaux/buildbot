@@ -9,6 +9,7 @@ backend-path = ["_custom_build", "."]
 
 [project]
 name = "buildbot"
+requires-python = ">=3.9"
 authors = [
     { name = "Brian Warner", email = "warner-buildbot@lothar.com" },
 ]

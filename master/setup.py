@@ -605,10 +605,6 @@ setup_args = {
     ),
 }
 
-py_38 = sys.version_info[0] > 3 or (sys.version_info[0] == 3 and sys.version_info[1] >= 8)
-if not py_38:
-    raise RuntimeError("Buildbot master requires at least Python-3.8")
-
 twisted_ver = ">= 24.7.0"
 
 bundle_version = version.split("-")[0]
