@@ -1,0 +1,2 @@
+``NO_INSTALL_REQS`` no longer remove extra dependencies definition.
+Users not wanting to install extra dependencies can simply not request them.
