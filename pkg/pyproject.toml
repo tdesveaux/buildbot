@@ -1,0 +1,34 @@
+[build-system]
+requires = [
+    "setuptools>=61.2",
+]
+# Create a dummy backend, which is overkill for our needs
+# but we NEED to add '.' to PYTHONPATH to access buildbot_pkg.getVersion
+build-backend = "buildbot_backend"
+backend-path = ["_custom_build", "."]
+
+[project]
+name = "buildbot-pkg"
+authors = [
+    { name = "Pierre Tardy", email = "tardyp@gmail.com" },
+]
+description = "Buildbot packaging tools"
+license = "GPL-2.0-or-later"
+dependencies = [
+    "setuptools >= 34.4.0",
+]
+dynamic = [
+    "version",
+]
+
+[project.urls]
+Homepage = "http://buildbot.net/"
+
+[tool.setuptools]
+# for some reason, with 'pyproject.toml' setuptools
+# will include 'test_buildbot_pkg.py' in sdist,
+# which wasn't with a similar 'setup.cfg'
+py-modules = [
+    "buildbot_pkg"
+]
+include-package-data = false
