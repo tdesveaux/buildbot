@@ -605,12 +605,6 @@ setup_args = {
     ),
 }
 
-# set zip_safe to false to force Windows installs to always unpack eggs
-# into directories, which seems to work better --
-# see http://buildbot.net/trac/ticket/907
-if sys.platform == "win32":
-    setup_args['zip_safe'] = False
-
 py_38 = sys.version_info[0] > 3 or (sys.version_info[0] == 3 and sys.version_info[1] >= 8)
 if not py_38:
     raise RuntimeError("Buildbot master requires at least Python-3.8")
