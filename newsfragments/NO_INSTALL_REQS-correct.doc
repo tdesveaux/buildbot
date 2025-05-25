@@ -1,0 +1,1 @@
+Fix ``NO_INSTALL_REQS`` documentation. Setting this env var to any value will strip dependencies information.
