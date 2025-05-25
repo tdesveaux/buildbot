@@ -36,9 +36,21 @@ classifiers = [
 ]
 dynamic = [
     "version",
-    "dependencies",
-    "optional-dependencies",
     "scripts",
+]
+
+dependencies = [
+    'twisted >= 21.2.0',
+    'autobahn >= 0.16.0',
+    'msgpack >= 0.6.0',
+    # buildbot_worker_windows_service needs pywin32
+    'pywin32; platform_system=="Windows"'
+]
+
+[project.optional-dependencies]
+# Unit test hard dependencies.
+test = [
+    'psutil',
 ]
 
 [project.urls]

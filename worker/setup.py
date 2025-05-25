@@ -106,23 +106,5 @@ setup_args = {
     },
 }
 
-twisted_ver = ">= 21.2.0"
-
-setup_args['install_requires'] = [
-    'twisted ' + twisted_ver,
-    'autobahn >= 0.16.0',
-    'msgpack >= 0.6.0',
-    # buildbot_worker_windows_service needs pywin32
-    'pywin32; platform_system=="Windows"',
-]
-
-# Unit test hard dependencies.
-test_deps = [
-    'psutil',
-]
-
-setup_args['extras_require'] = {
-    'test': test_deps,
-}
 
 setup(**setup_args)

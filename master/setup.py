@@ -607,29 +607,6 @@ setup_args = {
 
 bundle_version = version.split("-")[0]
 
-# dependencies
-setup_args['install_requires'] = [
-    'setuptools >= 8.0',
-    'Twisted >= 24.7.0',
-    'treq >= 20.9',
-    'Jinja2 >= 2.1',
-    'msgpack >= 0.6.0',
-    "croniter >= 1.3.0",
-    # required for tests, but Twisted requires this anyway
-    'zope.interface >= 4.1.1',
-    'sqlalchemy >= 1.4.0',
-    'alembic >= 1.6.0',
-    'python-dateutil>=1.5',
-    "txaio >= 2.2.2",
-    "autobahn >= 0.16.0",
-    'packaging',
-    'PyJWT',
-    'pyyaml',
-    'unidiff >= 0.7.5',
-    # buildbot_windows_service needs pywin32
-    'pywin32; platform_system=="Windows"',
-]
-
 # Unit test dependencies.
 test_deps = [
     # http client libraries
