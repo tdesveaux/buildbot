@@ -4,3 +4,5 @@ include docs/buildbot-worker.1
 
 include contrib/windows/* contrib/os-x/* contrib/init-scripts/*
 include contrib/zsh/* contrib/bash/*
+
+include _custom_build/buildbot_backend.py
