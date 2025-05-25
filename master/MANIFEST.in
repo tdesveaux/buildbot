@@ -35,3 +35,5 @@ include buildbot/db/migrations/README include buildbot/db/migrations/alembic.ini
 include contrib/* contrib/windows/* contrib/os-x/* contrib/css/* contrib/libvirt/*
 include contrib/trac/* contrib/trac/bbwatcher/* contrib/trac/bbwatcher/templates/*
 include contrib/init-scripts/* contrib/bash/* contrib/zsh/*
+
+include _custom_build/buildbot_backend.py
