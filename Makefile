@@ -149,7 +149,12 @@ $(VENV_NAME):
 
 # helper for virtualenv creation
 virtualenv: $(VENV_NAME) check_for_npm   # usage: make virtualenv VENV_PY_VERSION=python3.8
-	$(PIP) install -r requirements-ci.txt \
+# editable_mode=compat: setuptools newer editable install is not correctly pickedup by twisted.python.modules
+# Use legacy method for now.
+# see:	https://github.com/buildbot/buildbot/pull/6847
+# 		https://github.com/twisted/twisted/issues/11840
+	$(PIP) install --config-settings editable_mode=compat \
+		-r requirements-ci.txt \
 		-r requirements-ciworker.txt \
 		-r requirements-cidocs.txt \
 		packaging towncrier
