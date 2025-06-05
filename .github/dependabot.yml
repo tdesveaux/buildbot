@@ -8,6 +8,11 @@ updates:
     schedule:
       interval: "cron"
       cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directories:
@@ -30,6 +35,11 @@ updates:
     schedule:
       interval: "cron"
       cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "docker"
     directories:
@@ -40,6 +50,11 @@ updates:
     schedule:
       interval: "cron"
       cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -48,3 +63,8 @@ updates:
     schedule:
       interval: "cron"
       cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+    groups:
+      minor-upgrades:
+        update-types:
+          - "minor"
+          - "patch"
