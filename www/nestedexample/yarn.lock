@@ -3927,26 +3927,7 @@ gulp-wrap@0.8.0:
     lodash.template "~2.4.1"
     node.extend "~1.1.2"
 
-gulp@3.9.0:
-  version "3.9.0"
-  resolved "https://registry.yarnpkg.com/gulp/-/gulp-3.9.0.tgz#cf1fba4cb558bb8c6ae6c9613f583ae2620d214a"
-  integrity sha1-zx+6TLVYu4xq5slhP1g64mINIUo=
-  dependencies:
-    archy "^1.0.0"
-    chalk "^1.0.0"
-    deprecated "^0.0.1"
-    gulp-util "^3.0.0"
-    interpret "^0.6.2"
-    liftoff "^2.1.0"
-    minimist "^1.1.0"
-    orchestrator "^0.3.0"
-    pretty-hrtime "^1.0.0"
-    semver "^4.1.0"
-    tildify "^1.0.0"
-    v8flags "^2.0.2"
-    vinyl-fs "^0.3.0"
-
-gulp@~3.9.0:
+gulp@3.9.1, gulp@~3.9.0:
   version "3.9.1"
   resolved "https://registry.yarnpkg.com/gulp/-/gulp-3.9.1.tgz#571ce45928dd40af6514fc4011866016c13845b4"
   integrity sha1-VxzkWSjdQK9lFPxAEYZgFsE4RbQ=
@@ -4335,11 +4316,6 @@ insight@~0.3.0:
     lodash.debounce "~2.4.1"
     object-assign "~0.1.2"
     request "~2.27.0"
-
-interpret@^0.6.2:
-  version "0.6.6"
-  resolved "https://registry.yarnpkg.com/interpret/-/interpret-0.6.6.tgz#fecd7a18e7ce5ca6abfb953e1f86213a49f1625b"
-  integrity sha1-/s16GOfOXKar+5U+H4YhOknxYls=
 
 interpret@^1.0.0:
   version "1.2.0"
