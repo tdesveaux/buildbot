@@ -4,10 +4,14 @@ updates:
     directory: "/"
     commit-message:
       prefix: "requirements: "
-    open-pull-requests-limit: 15
     schedule:
       interval: "cron"
       cronjob: "0 0 1,15 * *"  # every 1st and 15th of the month
+    groups:
+      pip-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "npm"
     directories:
