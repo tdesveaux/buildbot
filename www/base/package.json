@@ -12,7 +12,7 @@
     "@types/react-window": "^1.8.5",
     "@types/underscore": "^1.11.4",
     "axios": "~1.7.7",
-    "bootstrap": "^4.6.2",
+    "bootstrap": "^5.0.0",
     "buildbot-data-js": "link:../data-module",
     "buildbot-plugin-support": "link:../plugin_support",
     "buildbot-ui": "link:../ui",
