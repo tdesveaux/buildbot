@@ -22,7 +22,7 @@ pywin32==311; platform_system=="Windows"
 
 alembic==1.18.1
 attrs==25.3.0
-autobahn==24.4.2
+autobahn==25.12.2
 Automat==25.4.16
 boto==2.49.0
 boto3==1.38.36
