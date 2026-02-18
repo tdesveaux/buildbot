@@ -2,7 +2,6 @@ name: CI (DB)
 on:
   push:
     branches:
-    - main
     - release
   workflow_dispatch:
     inputs:
