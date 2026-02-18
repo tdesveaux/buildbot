@@ -5,7 +5,7 @@
 
 # Provides a base Debian image with latest buildbot worker installed
 
-FROM docker.io/library/debian:12
+FROM docker.io/library/debian:12@sha256:34e7f0ae7c10a61bfbef6e1b2ed205d9b47bb12e90c50696f729a5c7a01cf1f2
 MAINTAINER  Buildbot maintainers
 
 # Last build date - this can be updated whenever there are security updates so

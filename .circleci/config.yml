@@ -10,7 +10,7 @@ jobs:
   build:
     docker:
       # use the same build image as we use for metabuildbot
-      - image: buildbot/metabbotcfg
+      - image: buildbot/metabbotcfg@sha256:f546230546faf3a0397b7a7f8f75559bb82abe3404b1fb726e10ffb4dba96af9
     working_directory: ~/repo
     environment:
       # Needed to ignore specific warns, otherwise, it'll warn a generic message

@@ -2,7 +2,7 @@ version: '2'
 services:
 
   lb:
-    image: dockercloud/haproxy
+    image: dockercloud/haproxy@sha256:040d1b321437afd9f8c9ba40e8340200d2b0ae6cf280a929a1e8549698c87d30
     links:
       - buildbot
     volumes:
@@ -15,7 +15,7 @@ services:
       - 9989:9989   # for external workers
 
   buildbot:
-    image: buildbot/buildbot-master:latest
+    image: buildbot/buildbot-master:latest@sha256:7711df1f122f834051ac83bc5247de99956b6f9ce0704b51011830a2faea6474
     env_file: db.env
     environment:
         - BUILDBOT_CONFIG_DIR=config
@@ -34,19 +34,19 @@ services:
         - 9989
 
   db:
-    image: "postgres:9.4"
+    image: "postgres:9.4@sha256:42a7a6a647a602efa9592edd1f56359800d079b93fa52c5d92244c58ac4a2ab9"
     env_file: db.env
     expose:
         - 5432
 
   mq:
-    image: "crossbario/crossbar"
+    image: "crossbario/crossbar@sha256:bc193d9d4f20cd878113d66d538a085588533897ef99a0508ab558f5a2fe9a2e"
     env_file: db.env
     expose:
         - 8080
 
   worker:
-    image: "buildbot/buildbot-worker:master"
+    image: "buildbot/buildbot-worker:master@sha256:21c050440c64fffdae89f2d33862ee3c26652b9fe21f2e2d98d2bd453ea43e1a"
     environment:
         BUILDMASTER: lb
         BUILDMASTER_PORT: 9989
