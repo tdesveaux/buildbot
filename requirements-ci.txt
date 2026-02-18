@@ -61,7 +61,7 @@ python-dateutil==2.9.0.post0
 pytz==2025.2
 PyYAML==6.0.2
 requests==2.32.4
-responses==0.25.7
+responses==0.25.8
 ruff==0.14.0
 s3transfer==0.13.0
 service-identity==24.2.0
