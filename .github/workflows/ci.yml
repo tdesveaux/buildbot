@@ -254,7 +254,10 @@ jobs:
         os:
           - ubuntu-24.04-arm
           - ubuntu-latest
-          - windows-2022
+          - ubuntu-24.04-arm
+          - windows-latest
+          - macos-15-intel
+          - macos-latest
 
     name: ${{ matrix.os }} / python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
@@ -282,8 +285,12 @@ jobs:
       fail-fast: false
       matrix:
         os:
+          - ubuntu-latest
           - ubuntu-24.04-arm
           - windows-latest
+          - windows-11-arm
+          - macos-15-intel
+          - macos-latest
 
     runs-on: ${{ matrix.os }}
 
@@ -291,7 +298,7 @@ jobs:
       - uses: "actions/checkout@v6"
       - uses: "./.github/actions/setup-python-deps"
         with:
-          python-version: "=3.10"
+          python-version: "=3.11"
           requirements: "requirements-ci-pyinstaller.txt"
 
       - name: "Install worker"
