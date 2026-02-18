@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "timezone": "UTC",
+  "prConcurrentLimit": 15,
+  "schedule": ["* * 1,15 * *"],
+  "packageRules": [
+    {
+      "matchManagers": ["pip_requirements", "pip_setup"],
+      "matchFileNames": ["/"],
+      "commitMessagePrefix": "requirements: "
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["www/**"],
+      "commitMessagePrefix": "www: ",
+      "prConcurrentLimit": 3
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["e2e/**"],
+      "commitMessagePrefix": "e2e: ",
+      "prConcurrentLimit": 3
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["**/*"],
+      "commitMessagePrefix": "docker: "
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchFileNames": ["/"],
+      "commitMessagePrefix": "github: "
+    }
+  ]
+}
