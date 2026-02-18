@@ -33,7 +33,7 @@
     "build-config-buildbot": "link:../common-config",
     "eslint": "^9.27.0",
     "jsdom": "^25.0.0",
-    "mobx": "^6.13.4",
+    "mobx": "^6.15.0",
     "moment": "^2.29.4",
     "react": "^18.2.0",
     "react-app-polyfill": "~3.0.0",

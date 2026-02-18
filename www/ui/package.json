@@ -48,7 +48,7 @@
     "buildbot-plugin-support": "link:../plugin_support",
     "eslint": "^9.27.0",
     "jsdom": "^25.0.0",
-    "mobx": "^6.13.4",
+    "mobx": "^6.15.0",
     "mobx-react": "^9.1.1",
     "moment": "^2.29.4",
     "react": "^18.2.0",
