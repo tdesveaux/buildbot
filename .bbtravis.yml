@@ -197,7 +197,7 @@ script:
     condition: TESTS == "mypy"
     cmd:  |
       export PATH=/tmp/bbvenv/bin/:$PATH
-      make mypy
+      make -j mypy
 
   # Build documentation
   - title: docs
