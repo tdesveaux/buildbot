@@ -122,7 +122,7 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         ):
             P4(p4base='//depot', mode='invalid')
 
-    def test_mode_incremental_p4base_with_revision(self) -> defer.Deferred[None]:
+    async def test_mode_incremental_p4base_with_revision(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -218,7 +218,7 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         )
         self.expect_outcome(result=SUCCESS)
         self.expect_property('got_revision', '100', 'P4')
-        return self.run_step()
+        await self.run_step()
 
     def _incremental(
         self,
@@ -296,7 +296,7 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         self.expect_property('got_revision', '100', 'P4')
         return self.run_step()
 
-    def test_mode_incremental_p4base(self) -> None:
+    async def test_mode_incremental_p4base(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -329,9 +329,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._incremental(client_stdin=client_spec)
+        await self._incremental(client_stdin=client_spec)
 
-    def test_mode_incremental_p4base_with_no_branch(self) -> None:
+    async def test_mode_incremental_p4base_with_no_branch(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -363,9 +363,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._incremental(client_stdin=client_spec)
+        await self._incremental(client_stdin=client_spec)
 
-    def test_mode_incremental_p4base_with_p4extra_views(self) -> None:
+    async def test_mode_incremental_p4base_with_p4extra_views(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -406,9 +406,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         \t-//depot/trunk/doc/... //p4_client1/doc/...
         \t"-//depot/trunk/white space/..." "//p4_client1/white space/..."
         """)
-        self._incremental(client_stdin=client_spec)
+        await self._incremental(client_stdin=client_spec)
 
-    def test_mode_incremental_p4viewspec(self) -> None:
+    async def test_mode_incremental_p4viewspec(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -446,9 +446,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         \t"//depot/white space/..." "//p4_client1/white space/..."
         \t"-//depot/white space/excluded/..." "//p4_client1/white space/excluded/..."
         """)
-        self._incremental(client_stdin=client_spec)
+        await self._incremental(client_stdin=client_spec)
 
-    def test_mode_incremental_p4viewspec_suffix(self) -> None:
+    async def test_mode_incremental_p4viewspec_suffix(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -487,9 +487,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         \t"//depot/white space/..." "//p4_client1/white space/..."
         \t"-//depot/white space/excluded/..." "//p4_client1/white space/excluded/..."
         """)
-        self._incremental(client_stdin=client_spec)
+        await self._incremental(client_stdin=client_spec)
 
-    def test_mode_incremental_p4client_spec_options(self) -> None:
+    async def test_mode_incremental_p4client_spec_options(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -523,9 +523,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._incremental(client_stdin=client_spec)
+        await self._incremental(client_stdin=client_spec)
 
-    def test_mode_incremental_parent_workdir(self) -> None:
+    async def test_mode_incremental_parent_workdir(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -559,9 +559,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._incremental(client_stdin=client_spec, workdir='../another_wkdir')
+        await self._incremental(client_stdin=client_spec, workdir='../another_wkdir')
 
-    def test_mode_incremental_p4extra_args(self) -> None:
+    async def test_mode_incremental_p4extra_args(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -595,9 +595,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._incremental(client_stdin=client_spec, extra_args=['-Zproxyload'])
+        await self._incremental(client_stdin=client_spec, extra_args=['-Zproxyload'])
 
-    def test_mode_incremental_timeout(self) -> None:
+    async def test_mode_incremental_timeout(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -631,9 +631,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._incremental(client_stdin=client_spec, timeout=60 * 60)
+        await self._incremental(client_stdin=client_spec, timeout=60 * 60)
 
-    def test_mode_incremental_stream(self) -> None:
+    async def test_mode_incremental_stream(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -666,7 +666,7 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
 
         Stream:\t//depot/trunk
         """)
-        self._incremental(client_stdin=client_spec)
+        await self._incremental(client_stdin=client_spec)
 
     def _full(
         self,
@@ -765,7 +765,7 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         self.expect_property('got_revision', '100', 'P4')
         return self.run_step()
 
-    def test_mode_full_p4base(self) -> None:
+    async def test_mode_full_p4base(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -797,9 +797,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
 
         View:
         \t//depot/trunk/... //p4_client1/...\n""")
-        self._full(client_stdin=client_stdin)
+        await self._full(client_stdin=client_stdin)
 
-    def test_mode_full_p4base_not_obfuscated(self) -> None:
+    async def test_mode_full_p4base_not_obfuscated(self) -> None:
         self.setup_build(worker_version={'*': '2.15'})
         self.setup_step(
             P4(
@@ -832,9 +832,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
 
         View:
         \t//depot/trunk/... //p4_client1/...\n""")
-        self._full(client_stdin=client_stdin, obfuscated_pass=False)
+        await self._full(client_stdin=client_stdin, obfuscated_pass=False)
 
-    def test_mode_full_p4base_with_no_branch(self) -> None:
+    async def test_mode_full_p4base_with_no_branch(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -866,9 +866,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._full(client_stdin=client_spec)
+        await self._full(client_stdin=client_spec)
 
-    def test_mode_full_p4viewspec(self) -> None:
+    async def test_mode_full_p4viewspec(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -906,9 +906,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         \t"//depot/main/white space/..." "//p4_client1/white space/..."
         \t"-//depot/main/white space/excluded/..." "//p4_client1/white space/excluded/..."
         """)
-        self._full(client_stdin=client_stdin)
+        await self._full(client_stdin=client_stdin)
 
-    def test_mode_full_renderable_p4base(self) -> None:
+    async def test_mode_full_renderable_p4base(self) -> None:
         # Note that the config check skips checking p4base if it's a renderable
         self.setup_step(
             P4(
@@ -941,9 +941,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
 
         View:
         \t//depot/release/1.0/... //p4_client2/...\n""")
-        self._full(client_stdin=client_stdin, p4client='p4_client2')
+        await self._full(client_stdin=client_stdin, p4client='p4_client2')
 
-    def test_mode_full_renderable_p4client(self) -> None:
+    async def test_mode_full_renderable_p4client(self) -> None:
         # Note that the config check skips checking p4base if it's a renderable
         self.setup_step(
             P4(
@@ -977,9 +977,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client_render/...\n""")
 
-        self._full(client_stdin=client_stdin, p4client='p4_client_render')
+        await self._full(client_stdin=client_stdin, p4client='p4_client_render')
 
-    def test_mode_full_renderable_p4branch(self) -> None:
+    async def test_mode_full_renderable_p4branch(self) -> None:
         # Note that the config check skips checking p4base if it's a renderable
         self.setup_step(
             P4(
@@ -1013,9 +1013,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/render_branch/... //p4_client1/...\n""")
 
-        self._full(client_stdin=client_stdin)
+        await self._full(client_stdin=client_stdin)
 
-    def test_mode_full_renderable_p4viewspec(self) -> None:
+    async def test_mode_full_renderable_p4viewspec(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1047,9 +1047,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/render_trunk/... //p4_client1/...\n""")
 
-        self._full(client_stdin=client_stdin, p4user='different_user')
+        await self._full(client_stdin=client_stdin, p4user='different_user')
 
-    def test_mode_full_p4viewspec_suffix(self) -> None:
+    async def test_mode_full_p4viewspec_suffix(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1088,9 +1088,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         \t"//depot/trunk/white space/..." "//p4_client1/white space/..."
         \t"-//depot/trunk/white space/excluded/..." "//p4_client1/white space/excluded/..."
         """)
-        self._full(client_stdin=client_spec)
+        await self._full(client_stdin=client_spec)
 
-    def test_mode_full_p4client_spec_options(self) -> None:
+    async def test_mode_full_p4client_spec_options(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1124,9 +1124,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._full(client_stdin=client_spec)
+        await self._full(client_stdin=client_spec)
 
-    def test_mode_full_parent_workdir(self) -> None:
+    async def test_mode_full_parent_workdir(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1160,9 +1160,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._full(client_stdin=client_spec, workdir='../another_wkdir')
+        await self._full(client_stdin=client_spec, workdir='../another_wkdir')
 
-    def test_mode_full_p4extra_args(self) -> None:
+    async def test_mode_full_p4extra_args(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1196,9 +1196,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
         View:
         \t//depot/trunk/... //p4_client1/...
         """)
-        self._full(client_stdin=client_spec, extra_args=['-Zproxyload'])
+        await self._full(client_stdin=client_spec, extra_args=['-Zproxyload'])
 
-    def test_mode_full_stream(self) -> None:
+    async def test_mode_full_stream(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1231,9 +1231,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
 
         Stream:\t//depot/trunk
         """)
-        self._full(client_stdin=client_spec)
+        await self._full(client_stdin=client_spec)
 
-    def test_mode_full_stream_renderable_p4base(self) -> None:
+    async def test_mode_full_stream_renderable_p4base(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1266,9 +1266,9 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
 
         Stream:\t//depot/trunk
         """)
-        self._full(client_stdin=client_spec)
+        await self._full(client_stdin=client_spec)
 
-    def test_mode_full_stream_renderable_p4branch(self) -> None:
+    async def test_mode_full_stream_renderable_p4branch(self) -> None:
         self.setup_step(
             P4(
                 p4port='localhost:12000',
@@ -1301,7 +1301,7 @@ class TestP4(sourcesteps.SourceStepMixin, TestReactorMixin, ConfigErrorsMixin, u
 
         Stream:\t//depot/render_branch
         """)
-        self._full(client_stdin=client_spec)
+        await self._full(client_stdin=client_spec)
 
     def test_worker_connection_lost(self) -> defer.Deferred[None]:
         self.setup_step(
