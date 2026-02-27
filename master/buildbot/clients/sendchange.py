@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import cast
 
 from twisted.cred import credentials
 from twisted.internet import defer
@@ -24,6 +25,8 @@ from twisted.spread import pb
 from buildbot.util import unicode2bytes
 
 if TYPE_CHECKING:
+    from twisted.internet.interfaces import IReactorTCP
+
     from buildbot.util.twisted import InlineCallbacksType
 
 
@@ -36,8 +39,8 @@ class Sender:
     ) -> None:
         self.username = unicode2bytes(auth[0])
         self.password = unicode2bytes(auth[1])
-        self.host, self.port = master.split(":")
-        self.port = int(self.port)  # type: ignore[assignment]
+        self.host, port = master.split(":")
+        self.port = int(port)
         self.encoding = encoding
 
     @defer.inlineCallbacks
@@ -64,7 +67,10 @@ class Sender:
             'project': project,
             'repository': repository,
             'who': who,
-            'files': files,
+            'files': [
+                file.decode(self.encoding, 'replace') if isinstance(file, bytes) else file
+                for file in files
+            ],
             'comments': comments,
             'branch': branch,
             'revision': revision,
@@ -83,14 +89,10 @@ class Sender:
         for key, value in change.items():
             if isinstance(value, bytes):
                 change[key] = value.decode(self.encoding, 'replace')
-        change['files'] = list(change['files'])  # type: ignore[assignment, arg-type]
-        for i, file in enumerate(change.get('files', [])):  # type: ignore[arg-type]
-            if isinstance(file, bytes):
-                change['files'][i] = file.decode(self.encoding, 'replace')  # type: ignore[index, call-overload]
 
         f = pb.PBClientFactory()
         d = f.login(credentials.UsernamePassword(self.username, self.password))
-        reactor.connectTCP(self.host, self.port, f)  # type: ignore[attr-defined]
+        cast("IReactorTCP", reactor).connectTCP(self.host, self.port, f)
 
         remote = yield d
         yield remote.callRemote('addChange', change)
