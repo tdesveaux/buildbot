@@ -16,10 +16,20 @@
 # this class is known to contain cruft and will be looked at later, so
 # no current implementation utilizes it aside from scripts.runner.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+from typing import cast
+
 from twisted.cred import credentials
 from twisted.internet import defer
 from twisted.internet import reactor
 from twisted.spread import pb
+
+if TYPE_CHECKING:
+    from twisted.internet.interfaces import IReactorTCP
+
+    from buildbot.util.twisted import InlineCallbacksType
 
 
 class UsersClient:
@@ -29,17 +39,29 @@ class UsersClient:
     args on the database.
     """
 
-    def __init__(self, master, username, password, port):
+    def __init__(self, master: str, username: str, password: str, port: int) -> None:
         self.host = master
         self.username = username
         self.password = password
         self.port = int(port)
 
     @defer.inlineCallbacks
-    def send(self, op, bb_username, bb_password, ids, info):
+    def send(
+        self,
+        op: str,
+        bb_username: str | None,
+        bb_password: str | None,
+        ids: list[str] | None,
+        info: list[dict[str, str]] | None,
+    ) -> InlineCallbacksType[None]:
         f = pb.PBClientFactory()
-        d = f.login(credentials.UsernamePassword(self.username, self.password))
-        reactor.connectTCP(self.host, self.port, f)
+        d = f.login(
+            credentials.UsernamePassword(
+                self.username,  # type: ignore [arg-type]
+                self.password,  # type: ignore [arg-type]
+            )
+        )
+        cast("IReactorTCP", reactor).connectTCP(self.host, self.port, f)
 
         remote = yield d
         res = yield remote.callRemote("commandline", op, bb_username, bb_password, ids, info)
