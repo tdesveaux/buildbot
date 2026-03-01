@@ -3,6 +3,7 @@ on:
   push:
     branches:
     - master
+    - ci/test-linux-arm
   pull_request:
 
 permissions:
@@ -10,6 +11,7 @@ permissions:
 
 jobs:
   ci:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -65,6 +67,7 @@ jobs:
         timeout-minutes: 30
 
   sandboxed-worker:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -96,3 +99,37 @@ jobs:
       - run: trial --reporter=text --rterrors buildbot.test.integration.interop
         env:
           SANDBOXED_WORKER_PATH: "${{ github.workspace }}/dist/buildbot-worker${{ startsWith(matrix.os, 'windows-') && '.exe' || '' }}"
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ vars.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./
+          platforms: linux/amd64,linux/arm64
+          file: Dockerfile.master
+          # push: true
+          tags: test-master:latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./worker/
+          platforms: linux/amd64,linux/arm64
+          file: worker/Dockerfile
+          # push: true
+          tags: test-worker:latest
