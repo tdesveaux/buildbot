@@ -47,8 +47,7 @@ if TYPE_CHECKING:
 class TransferStepsMasterPb(RunMasterBase):
     proto = "pb"
 
-    @defer.inlineCallbacks
-    def setup_config(self, bigfilename: str) -> InlineCallbacksType[None]:
+    async def setup_config(self, bigfilename: str) -> None:
         c = {}
         from buildbot.config import BuilderConfig  # noqa: PLC0415
         from buildbot.plugins import schedulers  # noqa: PLC0415
@@ -70,7 +69,7 @@ class TransferStepsMasterPb(RunMasterBase):
         f.addStep(FileDownload(mastersrc="master.txt", workerdest="dir/file3.txt"))
         f.addStep(DirectoryUpload(workersrc="dir", masterdest="dir"))
         c['builders'] = [BuilderConfig(name="testy", workernames=["local1"], factory=f)]
-        yield self.setup_master(c)
+        await self.setup_master(c)
 
     @defer.inlineCallbacks
     def setup_config_glob(self) -> InlineCallbacksType[None]:
@@ -130,11 +129,10 @@ class TransferStepsMasterPb(RunMasterBase):
         return contents
 
     @flaky(bugNumber=4407, onPlatform='win32')
-    @defer.inlineCallbacks
-    def test_transfer(self) -> InlineCallbacksType[None]:
-        yield self.setup_config(bigfilename=self.mktemp())
+    async def test_transfer(self) -> None:
+        await self.setup_config(bigfilename=self.mktemp())
 
-        build = yield self.doForceBuild(wantSteps=True, wantLogs=True)
+        build = await self.doForceBuild(wantSteps=True, wantLogs=True)
         self.assertEqual(build['results'], SUCCESS)
         dirContents = self.readMasterDirContents("dir")
         self.assertEqual(
