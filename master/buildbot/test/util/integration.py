@@ -47,6 +47,10 @@ from buildbot_worker.bot import Worker
 
 if TYPE_CHECKING:
     from twisted.application.service import Service
+    from twisted.internet.defer import Deferred
+
+    from buildbot.data.builds import BuildData
+    from buildbot.data.buildsets import BuildSetData
 
 
 @implementer(IConfigLoader)
@@ -419,8 +423,7 @@ class RunMasterBase(unittest.TestCase):
         self.master = self.tested_master.master
         self.master_config_dict = self.tested_master.master_config_dict
 
-    @defer.inlineCallbacks
-    def doForceBuild(
+    async def doForceBuild(
         self,
         wantSteps=False,
         wantProperties=False,
@@ -428,47 +431,48 @@ class RunMasterBase(unittest.TestCase):
         useChange=False,
         forceParams=None,
         triggerCallback=None,
-    ):
+    ) -> BuildData:
         if forceParams is None:
             forceParams = {}
         # force a build, and wait until it is finished
-        d = defer.Deferred()
+        d: Deferred[BuildSetData] = defer.Deferred()
 
         # in order to allow trigger based integration tests
         # we wait until the first started build is finished
         self.firstbsid = None
 
-        def newCallback(_, data):
+        def newCallback(_, data: BuildSetData) -> None:
             if self.firstbsid is None:
                 self.firstbsid = data['bsid']
                 newConsumer.stopConsuming()
 
-        def finishedCallback(_, data):
+        def finishedCallback(_, data: BuildSetData) -> None:
             if self.firstbsid == data['bsid']:
                 d.callback(data)
 
-        newConsumer = yield self.master.mq.startConsuming(newCallback, ('buildsets', None, 'new'))
+        assert self.master is not None
+        newConsumer = await self.master.mq.startConsuming(newCallback, ('buildsets', None, 'new'))
 
-        finishedConsumer = yield self.master.mq.startConsuming(
+        finishedConsumer = await self.master.mq.startConsuming(
             finishedCallback, ('buildsets', None, 'complete')
         )
 
         if triggerCallback is not None:
-            yield triggerCallback()
+            await triggerCallback()
         elif useChange is False:
             # use data api to force a build
-            yield self.master.data.control("force", forceParams, ("forceschedulers", "force"))
+            await self.master.data.control("force", forceParams, ("forceschedulers", "force"))
         else:
             # use data api to force a build, via a new change
-            yield self.master.data.updates.addChange(**useChange)
+            await self.master.data.updates.addChange(**useChange)
 
         # wait until we receive the build finished event
-        buildset = yield d
-        buildrequests = yield self.master.data.get(
+        buildset = await d
+        buildrequests = await self.master.data.get(
             ('buildrequests',), filters=[resultspec.Filter('buildsetid', 'eq', [buildset['bsid']])]
         )
         buildrequest = buildrequests[-1]
-        builds = yield self.master.data.get(
+        builds: list[BuildData] = await self.master.data.get(
             ('builds',),
             filters=[resultspec.Filter('buildrequestid', 'eq', [buildrequest['buildrequestid']])],
         )
@@ -476,7 +480,7 @@ class RunMasterBase(unittest.TestCase):
         # We return the last build
         build = builds[-1]
         finishedConsumer.stopConsuming()
-        yield enrich_build(build, self.master, wantSteps, wantProperties, wantLogs)
+        await enrich_build(build, self.master, wantSteps, wantProperties, wantLogs)
         return build
 
     def _match_patterns_consume(self, text, patterns, is_regex):
