@@ -28,7 +28,6 @@ from buildbot.steps.transfer import FileUpload
 from buildbot.steps.transfer import MultipleFileUpload
 from buildbot.steps.transfer import StringDownload
 from buildbot.steps.worker import CompositeStepMixin
-from buildbot.test.util.decorators import flaky
 from buildbot.test.util.integration import RunMasterBase
 
 # This integration test creates a master and worker environment
@@ -122,7 +121,6 @@ class TransferStepsMasterPb(RunMasterBase):
                     contents[fn] = f.read()
         return contents
 
-    @flaky(bugNumber=4407, onPlatform='win32')
     async def test_transfer(self) -> None:
         await self.setup_config(bigfilename=self.mktemp())
 
