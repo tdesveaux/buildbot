@@ -207,9 +207,10 @@ class Buildset(base.ResourceType):
 
         # get each of the sourcestamps for this buildset (sequentially)
         bsdict = yield self.master.db.buildsets.getBuildset(bsid)
-        sourcestamps = []
+        data_sourcestamps: list[SourceStampData] = []
         for ssid in bsdict.sourcestamps:
-            sourcestamps.append((yield self.master.data.get(('sourcestamps', str(ssid)))).copy())
+            sourcestamp = yield self.master.data.get(('sourcestamps', str(ssid)))
+            data_sourcestamps.append(sourcestamp.copy())
 
         # notify about the component build requests
         brResource = self.master.data.getResourceType("buildrequest")
@@ -217,19 +218,20 @@ class Buildset(base.ResourceType):
         brResource.generateEvent(list(brids.values()), 'new')  # type: ignore[attr-defined]
 
         # and the buildset itself
-        msg = {
+        msg: BuildSetData = {
             "bsid": bsid,
             "external_idstring": external_idstring,
             "reason": reason,
             "parent_buildid": parent_buildid,
+            "parent_relationship": parent_relationship,
             "rebuilt_buildid": rebuilt_buildid,
             "submitted_at": submitted_at,
             "complete": False,
             "complete_at": None,
             "results": None,
-            "scheduler": scheduler,
-            "sourcestamps": sourcestamps,
+            "sourcestamps": data_sourcestamps,
         }
+        msg["scheduler"] = scheduler  # type: ignore[typeddict-unknown-key]
         # TODO: properties=properties)
         self.produceEvent(msg, "new")
 
@@ -287,7 +289,7 @@ class Buildset(base.ResourceType):
                 copy.deepcopy((yield self.master.data.get(('sourcestamps', str(ssid)))))
             )
 
-        msg = {
+        msg: BuildSetData = {
             "bsid": bsid,
             "external_idstring": bsdict.external_idstring,
             "reason": bsdict.reason,
