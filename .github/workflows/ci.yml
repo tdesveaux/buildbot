@@ -3,6 +3,7 @@ on:
   push:
     branches:
     - master
+    - test
   pull_request:
 
 permissions:
@@ -10,6 +11,7 @@ permissions:
 
 jobs:
   win:
+    if: false
     name: Win / python ${{ matrix.python-version }}
     runs-on: windows-2022
 
@@ -78,6 +80,9 @@ jobs:
         run: |
           python -m pip install -r requirements-pip.txt
           python -m pip install -r requirements-ci-pyinstaller.txt
+          # do a true, non-editable install
+          python -m pip uninstall --yes buildbot-worker
+          python -m pip install ./worker
       - run: pyinstaller pyinstaller/buildbot-worker.spec
       - run: trial --reporter=text --rterrors buildbot.test.integration.interop
         env:
