@@ -9,6 +9,7 @@ label_mapping:
   PYTHON: py
   TESTS: t
   WORKER_PYTHON: wp
+  MYPY: mypy
 env:
   global:
   - BUILDBOT_TEST_DB_URL=sqlite://
@@ -24,8 +25,10 @@ matrix:
     # ruff, docs first as they're more likely to find issues
     - env: PYTHON=3.9 TWISTED=latest SQLALCHEMY=latest TESTS=ruff
     - env: PYTHON=3.9 TWISTED=latest SQLALCHEMY=latest TESTS=docs
-    - env: PYTHON=3.9 TESTS=mypy
-    - env: PYTHON=3.13 TESTS=mypy
+    - env: PYTHON=3.9 TESTS=mypy-master
+    - env: PYTHON=3.14 TESTS=mypy-master
+    - env: PYTHON=3.7 MYPY=1.16.1 TESTS=mypy-worker
+    - env: PYTHON=3.14 MYPY=1.16.1 TESTS=mypy-worker
     - env: PYTHON=3.9 TESTS=prettier
 
     # add js tests in separate job. Start it early because it is quite long
@@ -88,7 +91,7 @@ install:
     cmd: /tmp/bbvenv/bin/pip install -e master -e worker
   - condition: TESTS == "dev_virtualenv"
     cmd: /tmp/bbvenv/bin/pip install -r requirements-ci.txt -r requirements-ciworker.txt -r requirements-cidocs.txt
-  - condition: TESTS == "trial_worker"
+  - condition: TESTS in ("trial_worker", "mypy-worker")
     cmd: /tmp/bbvenv/bin/pip install -r requirements-ciworker.txt
   - condition: TESTS == "docs"
     cmd: /tmp/bbvenv/bin/pip install -r requirements-cidocs.txt
@@ -116,6 +119,9 @@ install:
       fi
       if [ ! -z "$SQLALCHEMY" -a "$SQLALCHEMY" != "latest" ]; then
         pkg_ver="${pkg_ver} sqlalchemy==$SQLALCHEMY"
+      fi
+      if [ ! -z "$MYPY" -a "$MYPY" != "latest" ]; then
+        pkg_ver="${pkg_ver} mypy==$MYPY"
       fi
 
       if [ ! -z "$pkg_ver" ]; then
@@ -196,13 +202,21 @@ script:
       make frontend_npm_install
       make prettier-check
 
-  - title: mypy
-    condition: TESTS == "mypy"
+  - title: mypy-master
+    condition: TESTS in ("mypy", "mypy-master")
     cmd:  |
       set -e
       export PATH=/tmp/bbvenv/bin/:$PATH
       [ "$PYTHON" = "3.9" ] && export MYPY_EXTRA_FLAGS=--no-warn-unused-ignores || true
-      make -j mypy
+      make -j mypy-master
+
+  - title: mypy-worker
+    condition: TESTS in ("mypy", "mypy-worker")
+    cmd:  |
+      set -e
+      export PATH=/tmp/bbvenv/bin/:$PATH
+      [ "$PYTHON" = "3.9" ] && export MYPY_EXTRA_FLAGS=--no-warn-unused-ignores || true
+      make -j mypy-worker
 
   # Build documentation
   - title: docs

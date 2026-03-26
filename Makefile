@@ -133,7 +133,9 @@ mypy-worker-linux:
 mypy-worker-win32:
 	$(MYPY) --cache-dir ".mypy_cache/worker/win32" --platform win32 --config-file ./worker/.mypy.ini $(MYPY_EXTRA_FLAGS) worker/buildbot_worker
 
-mypy: mypy-master-linux mypy-master-win32 mypy-worker-linux mypy-worker-win32
+mypy-master: mypy-master-linux mypy-master-win32
+mypy-worker: mypy-worker-linux mypy-worker-win32
+mypy: mypy-master mypy-worker
 
 docker: docker-buildbot-worker docker-buildbot-master
 	echo done
