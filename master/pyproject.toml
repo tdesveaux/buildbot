@@ -140,6 +140,7 @@ exclude = [
 ]
 
 [tool.setuptools.package-data]
+"buildbot" = ["py.typed"]
 "buildbot.reporters.templates" = ["*.txt"]
 "buildbot.db.migrations" = ["alembic.ini", "README"]
 "buildbot.db.migrations.versions" = ["*.py"]
