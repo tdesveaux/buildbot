@@ -4,6 +4,7 @@ on:
     branches:
     - master
     - release
+    - investigate/pb-RemoteReference-del-outside-reactor
   workflow_dispatch:
     inputs:
       branch:
@@ -28,40 +29,40 @@ jobs:
             connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest{TEST_ID}?storage_engine=InnoDB'
             check: healthcheck.sh --connect --innodb_initialized
 
-          - name: MariaDB Server LTS
-            database: mariadb:lts
-            connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest{TEST_ID}?storage_engine=InnoDB'
-            check: healthcheck.sh --connect --innodb_initialized
+          # - name: MariaDB Server LTS
+          #   database: mariadb:lts
+          #   connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest{TEST_ID}?storage_engine=InnoDB'
+          #   check: healthcheck.sh --connect --innodb_initialized
 
-          - name: MySQL LTS
-            database: mysql:lts
-            connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest{TEST_ID}?storage_engine=InnoDB'
-            check: mysqladmin --protocol tcp ping
+          # - name: MySQL LTS
+          #   database: mysql:lts
+          #   connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest{TEST_ID}?storage_engine=InnoDB'
+          #   check: mysqladmin --protocol tcp ping
 
-          - name: MySQL latest
-            database: mysql:latest
-            connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest{TEST_ID}?storage_engine=InnoDB'
-            check: mysqladmin --protocol tcp ping
+          # - name: MySQL latest
+          #   database: mysql:latest
+          #   connection: 'mysql+mysqldb://buildbot:buildbot@127.0.0.1:3306/bbtest{TEST_ID}?storage_engine=InnoDB'
+          #   check: mysqladmin --protocol tcp ping
 
-          - name: PostgreSQL 13 / psycopg2
-            database: postgres:13
-            connection: 'postgresql+psycopg2://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
-            check: pg_isready
+          # - name: PostgreSQL 13 / psycopg2
+          #   database: postgres:13
+          #   connection: 'postgresql+psycopg2://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
+          #   check: pg_isready
 
-          - name: PostgreSQL 13 / pg8000
-            database: postgres:13
-            connection: 'postgresql+pg8000://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
-            check: pg_isready
+          # - name: PostgreSQL 13 / pg8000
+          #   database: postgres:13
+          #   connection: 'postgresql+pg8000://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
+          #   check: pg_isready
 
-          - name: PostgreSQL latest / psycopg2
-            database: postgres:latest
-            connection: 'postgresql+psycopg2://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
-            check: pg_isready
+          # - name: PostgreSQL latest / psycopg2
+          #   database: postgres:latest
+          #   connection: 'postgresql+psycopg2://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
+          #   check: pg_isready
 
-          - name: PostgreSQL latest / pg8000
-            database: postgres:latest
-            connection: 'postgresql+pg8000://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
-            check: pg_isready
+          # - name: PostgreSQL latest / pg8000
+          #   database: postgres:latest
+          #   connection: 'postgresql+pg8000://buildbot:buildbot@127.0.0.1:5432/bbtest{TEST_ID}'
+          #   check: pg_isready
 
     env:
       BUILDBOT_TEST_DB_URL: ${{ matrix.connection }}
