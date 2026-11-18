@@ -166,10 +166,10 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
 
         return rv
 
-    def getPrevBuild(
+    async def getPrevBuild(
         self, builderid: int, number: int, scheduler_filter: str | None = None
-    ) -> defer.Deferred[tuple[int | None, int | None]]:
-        def thd(conn: sa.engine.Connection) -> tuple[int | None, int | None]:
+    ) -> tuple[int | None, int | None]:
+        def thd(conn: sa.engine.Connection) -> BuildModel | None:
             builds_tbl = self.db.model.builds
             if scheduler_filter:
                 buildrequests_tbl = self.db.model.buildrequests
@@ -183,8 +183,8 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     buildset_properties_tbl.c.buildsetid == buildrequests_tbl.c.buildsetid,
                 )
                 q = (
-                    sa
-                    .select(builds_tbl.c.number, builds_tbl.c.results)
+                    builds_tbl
+                    .select()
                     .select_from(from_clause)
                     .where(
                         (builds_tbl.c.builderid == builderid)
@@ -206,8 +206,8 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                 )
             else:
                 q = (
-                    sa
-                    .select(builds_tbl.c.number, builds_tbl.c.results)
+                    builds_tbl
+                    .select()
                     .select_from(builds_tbl)
                     .where(
                         (builds_tbl.c.builderid == builderid)
@@ -223,14 +223,17 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     .limit(1)
                 )
             row = conn.execute(q).first()
-            return (row.number, row.results) if row is not None else (None, None)
+            return self._model_from_row(row) if row is not None else None
 
-        return self.db.pool.do(thd)
+        build = await self.db.pool.do(thd)
+        if build is None:
+            return None, None
+        return build.number, build.results
 
-    def getNextBuild(
+    async def getNextBuild(
         self, builderid: int, number: int, scheduler_filter: str | None = None
-    ) -> defer.Deferred[tuple[int | None, int | None]]:
-        def thd(conn: sa.engine.Connection) -> tuple[int | None, int | None]:
+    ) -> tuple[int | None, int | None]:
+        def thd(conn: sa.engine.Connection) -> BuildModel | None:
             builds_tbl = self.db.model.builds
             if scheduler_filter:
                 buildrequests_tbl = self.db.model.buildrequests
@@ -244,8 +247,8 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                     buildset_properties_tbl.c.buildsetid == buildrequests_tbl.c.buildsetid,
                 )
                 q = (
-                    sa
-                    .select(builds_tbl.c.id, builds_tbl.c.results)
+                    builds_tbl
+                    .select()
                     .select_from(from_clause)
                     .where(
                         (builds_tbl.c.builderid == builderid)
@@ -267,8 +270,8 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                 )
             else:
                 q = (
-                    sa
-                    .select(builds_tbl.c.id, builds_tbl.c.results)
+                    builds_tbl
+                    .select()
                     .select_from(builds_tbl)
                     .where(
                         (builds_tbl.c.builderid == builderid)
@@ -285,9 +288,12 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
                 )
 
             row = conn.execute(q).first()
-            return (row.id, row.results) if row is not None else (None, None)
+            return self._model_from_row(row) if row is not None else None
 
-        return self.db.pool.do(thd)
+        build = await self.db.pool.do(thd)
+        if build is None:
+            return None, None
+        return build.id, build.results
 
     def getBuildsForChange(self, changeid: int) -> defer.Deferred[list[BuildModel]]:
         assert changeid > 0
