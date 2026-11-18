@@ -166,62 +166,53 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
 
         return rv
 
+    def _adjacent_build_query_base(
+        self,
+        builderid: int,
+        scheduler_filter: str | None,
+    ) -> sa.Select[Any]:
+        builds_tbl = self.db.model.builds
+        from_clause: sa.sql.expression.FromClause = builds_tbl
+        whereclause = (builds_tbl.c.builderid == builderid) & sa.or_(
+            builds_tbl.c.results.is_(None),
+            (builds_tbl.c.results != RETRY)
+            & (builds_tbl.c.results != SKIPPED)
+            & (builds_tbl.c.results != CANCELLED),
+        )
+        if scheduler_filter:
+            buildrequests_tbl = self.db.model.buildrequests
+            buildset_properties_tbl = self.db.model.buildset_properties
+            from_clause = builds_tbl.join(
+                buildrequests_tbl,
+                buildrequests_tbl.c.id == builds_tbl.c.buildrequestid,
+            ).join(
+                buildset_properties_tbl,
+                buildset_properties_tbl.c.buildsetid == buildrequests_tbl.c.buildsetid,
+            )
+            whereclause = (
+                whereclause
+                & (buildset_properties_tbl.c.property_name == "scheduler")
+                # buildset_properties_tbl.c.property_value is a tuple '["name...", "Scheduler"]'
+                & buildset_properties_tbl.c.property_value.startswith(f'["{scheduler_filter}')
+            )
+        return builds_tbl.select().select_from(from_clause).where(whereclause)
+
     async def getPrevBuild(
         self, builderid: int, number: int, scheduler_filter: str | None = None
     ) -> tuple[int | None, int | None]:
         def thd(conn: sa.engine.Connection) -> BuildModel | None:
             builds_tbl = self.db.model.builds
-            if scheduler_filter:
-                buildrequests_tbl = self.db.model.buildrequests
-                buildset_properties_tbl = self.db.model.buildset_properties
-                from_clause = builds_tbl.join(
-                    buildrequests_tbl,
-                    buildrequests_tbl.c.id == builds_tbl.c.buildrequestid,
+            q = (
+                self
+                ._adjacent_build_query_base(
+                    builderid,
+                    scheduler_filter,
                 )
-                from_clause = from_clause.join(
-                    buildset_properties_tbl,
-                    buildset_properties_tbl.c.buildsetid == buildrequests_tbl.c.buildsetid,
-                )
-                q = (
-                    builds_tbl
-                    .select()
-                    .select_from(from_clause)
-                    .where(
-                        (builds_tbl.c.builderid == builderid)
-                        & (builds_tbl.c.number < number)
-                        & sa.or_(
-                            builds_tbl.c.results.is_(None),
-                            (builds_tbl.c.results != RETRY)
-                            & (builds_tbl.c.results != SKIPPED)
-                            & (builds_tbl.c.results != CANCELLED),
-                        )
-                        & (buildset_properties_tbl.c.property_name == "scheduler")
-                        # buildset_properties_tbl.c.property_value is a tuple '["name...", "Scheduler"]'
-                        & buildset_properties_tbl.c.property_value.startswith(
-                            f'["{scheduler_filter}'
-                        )
-                    )
-                    .order_by(sa.desc(builds_tbl.c.number))
-                    .limit(1)
-                )
-            else:
-                q = (
-                    builds_tbl
-                    .select()
-                    .select_from(builds_tbl)
-                    .where(
-                        (builds_tbl.c.builderid == builderid)
-                        & (builds_tbl.c.number < number)
-                        & sa.or_(
-                            builds_tbl.c.results.is_(None),
-                            (builds_tbl.c.results != RETRY)
-                            & (builds_tbl.c.results != SKIPPED)
-                            & (builds_tbl.c.results != CANCELLED),
-                        )
-                    )
-                    .order_by(sa.desc(builds_tbl.c.number))
-                    .limit(1)
-                )
+                .where(builds_tbl.c.number < number)
+                .order_by(sa.desc(builds_tbl.c.number))
+                .limit(1)
+            )
+
             row = conn.execute(q).first()
             return self._model_from_row(row) if row is not None else None
 
@@ -235,58 +226,16 @@ class BuildsConnectorComponent(base.DBConnectorComponent):
     ) -> tuple[int | None, int | None]:
         def thd(conn: sa.engine.Connection) -> BuildModel | None:
             builds_tbl = self.db.model.builds
-            if scheduler_filter:
-                buildrequests_tbl = self.db.model.buildrequests
-                buildset_properties_tbl = self.db.model.buildset_properties
-                from_clause = builds_tbl.join(
-                    buildrequests_tbl,
-                    buildrequests_tbl.c.id == builds_tbl.c.buildrequestid,
+            q = (
+                self
+                ._adjacent_build_query_base(
+                    builderid,
+                    scheduler_filter,
                 )
-                from_clause = from_clause.join(
-                    buildset_properties_tbl,
-                    buildset_properties_tbl.c.buildsetid == buildrequests_tbl.c.buildsetid,
-                )
-                q = (
-                    builds_tbl
-                    .select()
-                    .select_from(from_clause)
-                    .where(
-                        (builds_tbl.c.builderid == builderid)
-                        & (builds_tbl.c.number > number)
-                        & sa.or_(
-                            builds_tbl.c.results.is_(None),
-                            (builds_tbl.c.results != RETRY)
-                            & (builds_tbl.c.results != SKIPPED)
-                            & (builds_tbl.c.results != CANCELLED),
-                        )
-                        & (buildset_properties_tbl.c.property_name == "scheduler")
-                        # buildset_properties_tbl.c.property_value is a tuple '["name...", "Scheduler"]'
-                        & buildset_properties_tbl.c.property_value.startswith(
-                            f'["{scheduler_filter}'
-                        )
-                    )
-                    .order_by(builds_tbl.c.number)
-                    .limit(1)
-                )
-            else:
-                q = (
-                    builds_tbl
-                    .select()
-                    .select_from(builds_tbl)
-                    .where(
-                        (builds_tbl.c.builderid == builderid)
-                        & (builds_tbl.c.number > number)
-                        & sa.or_(
-                            builds_tbl.c.results.is_(None),
-                            (builds_tbl.c.results != RETRY)
-                            & (builds_tbl.c.results != SKIPPED)
-                            & (builds_tbl.c.results != CANCELLED),
-                        )
-                    )
-                    .order_by(builds_tbl.c.number)
-                    .limit(1)
-                )
-
+                .where(builds_tbl.c.number > number)
+                .order_by(builds_tbl.c.number)
+                .limit(1)
+            )
             row = conn.execute(q).first()
             return self._model_from_row(row) if row is not None else None
 
